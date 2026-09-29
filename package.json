@@ -7,7 +7,7 @@
   "scripts": {
     "start": "node server.js",
     "test": "node test-logic.mjs && node test-server.js",
-    "build": "echo 'Static build verified - ready for Vercel deployment'"
+    "build": "node -e \"console.log('Static site ready for Vercel')\""
   },
   "keywords": [
     "montessori",

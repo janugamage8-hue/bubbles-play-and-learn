@@ -93,6 +93,9 @@ export function renderProductMedia(item, className = '') {
     imgSrc = item.customData.items[0].imageSrc || null;
   }
   if (imgSrc) {
+    if (!imgSrc.startsWith('/') && !imgSrc.startsWith('http') && !imgSrc.startsWith('data:')) {
+      imgSrc = '/' + imgSrc;
+    }
     const fallbackSvgType = (item && item.imageType) || 'wooden-blocks';
     return `<img src="${imgSrc}" alt="${(item && item.title) || 'Product'}" class="toy-photo ${className}" loading="lazy" onerror="this.onerror=null; this.outerHTML=window.generateToySvg ? window.generateToySvg('${fallbackSvgType}') : '';" />`;
   }

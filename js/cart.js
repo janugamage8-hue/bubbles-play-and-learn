@@ -218,7 +218,10 @@ export function renderCartDrawer() {
     itemsHtml = `
       <div class="cart-items-list">
         ${state.items.map(item => {
-          const itemImgSrc = item.imageSrc || (typeof getProductById === 'function' && getProductById(item.id)?.imageSrc) || '';
+          let itemImgSrc = item.imageSrc || (typeof getProductById === 'function' && getProductById(item.id)?.imageSrc) || '';
+          if (itemImgSrc && !itemImgSrc.startsWith('/') && !itemImgSrc.startsWith('http') && !itemImgSrc.startsWith('data:')) {
+            itemImgSrc = '/' + itemImgSrc;
+          }
           const isBox = item.isCustomBox && item.customData && item.customData.items && item.customData.items.length > 0;
 
           return `
@@ -226,9 +229,11 @@ export function renderCartDrawer() {
             <div class="cart-item-thumb ${isBox ? 'custom-box-thumb' : ''}">
               ${isBox ? `
                 <div class="custom-box-thumb-grid">
-                  ${item.customData.items.slice(0, 4).map(sub => `
-                    <img src="${sub.imageSrc || ''}" alt="${sub.title}" class="cart-mini-thumb" onerror="this.style.display='none'">
-                  `).join('')}
+                  ${item.customData.items.slice(0, 4).map(sub => {
+                    let subImg = sub.imageSrc || '';
+                    if (subImg && !subImg.startsWith('/') && !subImg.startsWith('http') && !subImg.startsWith('data:')) subImg = '/' + subImg;
+                    return `<img src="${subImg}" alt="${sub.title}" class="cart-mini-thumb" onerror="this.style.display='none'">`;
+                  }).join('')}
                 </div>
                 <span class="custom-box-badge">${item.customData.items.length}</span>
               ` : (itemImgSrc ? `
