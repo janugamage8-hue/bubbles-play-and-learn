@@ -1,0 +1,378 @@
+/* Bubbles Play & Learn Co. - Responsive Layout & Mobile Enhancements */
+
+/* Mobile Nav Drawer */
+.mobile-nav-drawer {
+  position: fixed;
+  inset: 0;
+  background-color: var(--color-surface);
+  z-index: 150;
+  display: flex;
+  flex-direction: column;
+  padding: 24px;
+  transform: translateX(-100%);
+  transition: transform var(--transition-normal);
+  visibility: hidden;
+}
+
+.mobile-nav-drawer.active {
+  transform: translateX(0);
+  visibility: visible;
+}
+
+.mobile-nav-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 32px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.mobile-nav-links {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.mobile-nav-links a {
+  font-size: 1.25rem;
+  font-family: var(--font-heading);
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.mobile-nav-footer {
+  margin-top: auto;
+  padding-top: 24px;
+  border-top: 1px solid var(--color-border);
+}
+
+/* Tablet Breakpoint (max-width: 1024px) */
+@media (max-width: 1024px) {
+  .hero-grid {
+    grid-template-columns: 1fr;
+    gap: 40px;
+  }
+
+  .hero-content {
+    text-align: center;
+  }
+
+  .hero-eyebrow {
+    margin: 0 auto 20px auto;
+  }
+
+  .hero-subtitle {
+    margin: 0 auto 32px auto;
+  }
+
+  .hero-cta-group {
+    justify-content: center;
+  }
+
+  .hero-trust-bar {
+    max-width: 600px;
+    margin: 0 auto;
+  }
+
+  .builder-main-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .sticky-box-preview-card {
+    position: static;
+    margin-top: 24px;
+  }
+
+  .survey-radio-cards {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .home-age-cards-grid {
+    grid-template-columns: repeat(3, 1fr);
+  }
+
+  .why-educational-grid {
+    grid-template-columns: 1fr;
+    gap: 36px;
+  }
+
+  .why-educational-media {
+    min-height: 380px;
+    max-height: 420px;
+  }
+
+  .quick-view-dialog {
+    max-width: 95%;
+    width: 95%;
+    max-height: 94vh;
+  }
+
+  .quick-view-grid {
+    grid-template-columns: 1fr;
+    gap: 28px;
+  }
+
+  .qv-media {
+    min-height: 330px;
+    padding: 20px;
+  }
+
+  .qv-media img.toy-photo {
+    max-height: 300px;
+  }
+
+  .result-details-split {
+    grid-template-columns: 1fr;
+  }
+
+  .age-categories-shelf {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+/* Mobile Breakpoint (max-width: 768px) */
+@media (max-width: 768px) {
+  .toy-store-age-section {
+    padding: 18px 16px;
+    margin-bottom: 20px;
+  }
+
+  .age-categories-shelf {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 10px;
+  }
+
+  .age-category-card-btn {
+    padding: 10px 10px;
+    gap: 8px;
+  }
+
+  .age-cat-icon {
+    font-size: 1.35rem;
+  }
+
+  .age-cat-title {
+    font-size: 0.88rem;
+  }
+
+  .age-cat-count {
+    font-size: 0.72rem;
+  }
+
+  .section {
+    padding: 50px 0;
+  }
+
+  .nav-links {
+    display: none;
+  }
+
+  .mobile-menu-btn {
+    display: block;
+  }
+
+  .brand-logo-img {
+    width: 40px;
+    height: 40px;
+  }
+
+  .hero-title {
+    font-size: 2.3rem;
+  }
+
+  .section-title {
+    font-size: 1.85rem;
+  }
+
+  .hero-trust-bar {
+    grid-template-columns: 1fr;
+    gap: 14px;
+    text-align: left;
+  }
+
+  .home-age-bar-wrapper {
+    padding: 24px 16px;
+    margin-top: 36px;
+  }
+
+  .home-age-cards-grid {
+    grid-template-columns: 1fr;
+    gap: 10px;
+  }
+
+  .hero-photo-img-wrap {
+    height: 240px;
+  }
+
+  .why-benefits-list {
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
+
+  .why-educational-media {
+    min-height: 250px;
+    max-height: 290px;
+  }
+
+  .why-image-floating-badge {
+    bottom: 12px;
+    left: 12px;
+    right: 12px;
+    padding: 10px 14px;
+  }
+
+  .shop-by-age-grid {
+    grid-template-columns: 1fr;
+    gap: 16px;
+  }
+
+  .builder-wrapper {
+    padding: 20px;
+  }
+
+  .builder-header-bar {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .child-personalization-inline input {
+    width: 100%;
+    min-width: unset;
+  }
+
+  .builder-instruction {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 10px;
+  }
+
+  .quiz-options-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .quiz-card {
+    padding: 24px 16px;
+  }
+
+  .quiz-results-card {
+    padding: 24px 16px;
+  }
+
+  .survey-card {
+    padding: 24px 16px;
+  }
+
+  .checkbox-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .form-grid-2 {
+    grid-template-columns: 1fr;
+  }
+
+  .payment-options-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .quick-view-dialog {
+    max-width: 96%;
+    width: 96%;
+    max-height: 94vh;
+  }
+
+  .qv-modal-header-bar {
+    padding: 12px 18px;
+  }
+
+  .qv-modal-body {
+    padding: 18px 18px 24px 18px;
+  }
+
+  .qv-media {
+    min-height: 260px;
+    padding: 16px;
+  }
+
+  .qv-media img.toy-photo {
+    max-height: 240px;
+  }
+
+  .qv-header h2 {
+    font-size: 1.45rem;
+  }
+
+  .qv-price {
+    font-size: 1.55rem;
+  }
+
+  .qv-actions-row {
+    flex-direction: column;
+  }
+
+  .products-grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 14px;
+  }
+
+  .prod-img-box {
+    height: 175px;
+    padding: 6px;
+  }
+
+  .prod-img-box img.toy-photo {
+    max-height: 160px;
+  }
+
+  .prod-details {
+    padding: 12px;
+  }
+
+  .prod-title {
+    font-size: 0.92rem;
+  }
+
+  .prod-pricing .current-price {
+    font-size: 1rem;
+  }
+
+  .prod-card-bottom {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+  }
+
+  .add-to-cart-btn {
+    width: 100%;
+  }
+
+  .cart-drawer-panel {
+    max-width: 100%;
+  }
+
+  .floating-whatsapp-btn {
+    bottom: 16px;
+    left: 16px;
+    width: 48px;
+    height: 48px;
+    font-size: 1.5rem;
+  }
+}
+
+/* Extra Small Screens (max-width: 420px) */
+@media (max-width: 420px) {
+  .products-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .survey-radio-cards {
+    grid-template-columns: 1fr;
+  }
+
+  .hero-cta-group .btn {
+    width: 100%;
+  }
+}

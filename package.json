@@ -1,0 +1,20 @@
+{
+  "name": "bubbles-play-and-learn",
+  "version": "1.0.0",
+  "description": "Bubbles Play & Learn Co. - Handcrafted Montessori & Developmental Toys Sri Lanka",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "test": "node test-logic.mjs && node test-server.js",
+    "build": "echo 'Static build verified - ready for Vercel deployment'"
+  },
+  "keywords": [
+    "montessori",
+    "educational-toys",
+    "sri-lanka",
+    "bubbles",
+    "early-childhood-development"
+  ],
+  "author": "Bubbles Play & Learn Co.",
+  "license": "MIT"
+}

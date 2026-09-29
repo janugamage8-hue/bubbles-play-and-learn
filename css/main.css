@@ -1,0 +1,300 @@
+/* Bubbles Play & Learn Co. - Core Design System & Base Styling */
+
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Quicksand:wght@500;600;700&display=swap');
+
+:root {
+  /* Montessori & Developmental Warm Pastel Color Palette */
+  --color-bg: #FAF7F2;
+  --color-surface: #FFFFFF;
+  --color-surface-hover: #FDFBF8;
+  --color-surface-subtle: #F4EFE6;
+  
+  --color-primary: #E06D53;
+  --color-primary-hover: #CC5A40;
+  --color-primary-light: #FFEDE8;
+  
+  --color-sage: #5F7A61;
+  --color-sage-light: #EBF1EA;
+  --color-honey: #E09F3E;
+  --color-honey-light: #FFF6E5;
+  --color-sky: #4A8E9F;
+  --color-sky-light: #E8F5F8;
+  --color-lavender: #8E7DBE;
+  --color-lavender-light: #F2EEFB;
+
+  --color-text-main: #273036;
+  --color-text-muted: #64748B;
+  --color-text-light: #94A3B8;
+  
+  --color-border: #E8E2D8;
+  --color-border-light: #F0EBE1;
+
+  --color-success: #10B981;
+  --color-warning: #F59E0B;
+  --color-danger: #EF4444;
+
+  /* Typography */
+  --font-heading: 'Quicksand', -apple-system, BlinkMacSystemFont, sans-serif;
+  --font-body: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+
+  /* Radii */
+  --radius-sm: 8px;
+  --radius-md: 14px;
+  --radius-lg: 20px;
+  --radius-xl: 28px;
+  --radius-pill: 9999px;
+
+  /* Shadows */
+  --shadow-sm: 0 2px 8px rgba(39, 48, 54, 0.04);
+  --shadow-md: 0 8px 24px rgba(39, 48, 54, 0.06);
+  --shadow-lg: 0 16px 36px rgba(39, 48, 54, 0.09);
+  --shadow-hover: 0 20px 40px rgba(224, 109, 83, 0.12);
+
+  /* Transitions */
+  --transition-fast: 0.18s ease;
+  --transition-normal: 0.28s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html {
+  scroll-behavior: smooth;
+  font-size: 16px;
+}
+
+body {
+  font-family: var(--font-body);
+  background-color: var(--color-bg);
+  color: var(--color-text-main);
+  line-height: 1.6;
+  overflow-x: hidden;
+  -webkit-font-smoothing: antialiased;
+}
+
+body.no-scroll {
+  overflow: hidden;
+}
+
+h1, h2, h3, h4, h5, h6 {
+  font-family: var(--font-heading);
+  font-weight: 700;
+  line-height: 1.25;
+  color: var(--color-text-main);
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+  transition: color var(--transition-fast);
+}
+
+img, svg {
+  display: block;
+  max-width: 100%;
+}
+
+button {
+  font-family: var(--font-body);
+  cursor: pointer;
+  border: none;
+  outline: none;
+  background: none;
+  transition: all var(--transition-fast);
+}
+
+input, select, textarea {
+  font-family: var(--font-body);
+  outline: none;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  padding: 12px 16px;
+  font-size: 0.95rem;
+  background-color: var(--color-surface);
+  color: var(--color-text-main);
+  transition: border-color var(--transition-fast), box-shadow var(--transition-fast);
+}
+
+input:focus, select:focus, textarea:focus {
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 3px var(--color-primary-light);
+}
+
+/* Base Utility Classes */
+.container {
+  width: 100%;
+  max-width: 1280px;
+  margin: 0 auto;
+  padding: 0 24px;
+}
+
+.section {
+  padding: 80px 0;
+  position: relative;
+}
+
+.section-header {
+  text-align: center;
+  max-width: 720px;
+  margin: 0 auto 48px auto;
+}
+
+.section-pill-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background-color: var(--color-primary-light);
+  color: var(--color-primary);
+  font-size: 0.82rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  padding: 6px 16px;
+  border-radius: var(--radius-pill);
+  margin-bottom: 16px;
+}
+
+.section-title {
+  font-size: 2.4rem;
+  margin-bottom: 14px;
+  letter-spacing: -0.02em;
+}
+
+.section-subtitle {
+  font-size: 1.1rem;
+  color: var(--color-text-muted);
+  line-height: 1.6;
+}
+
+/* Button System */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 12px 24px;
+  font-weight: 600;
+  font-size: 0.95rem;
+  border-radius: var(--radius-pill);
+  transition: all var(--transition-fast);
+}
+
+.btn-sm {
+  padding: 8px 16px;
+  font-size: 0.85rem;
+}
+
+.btn-lg {
+  padding: 16px 32px;
+  font-size: 1.05rem;
+}
+
+.btn-block {
+  width: 100%;
+}
+
+.btn-primary {
+  background-color: var(--color-primary);
+  color: #FFFFFF;
+  box-shadow: 0 6px 18px rgba(224, 109, 83, 0.28);
+}
+
+.btn-primary:hover {
+  background-color: var(--color-primary-hover);
+  transform: translateY(-2px);
+  box-shadow: 0 8px 24px rgba(224, 109, 83, 0.36);
+}
+
+.btn-secondary {
+  background-color: var(--color-sage);
+  color: #FFFFFF;
+}
+
+.btn-secondary:hover {
+  background-color: #4c634e;
+  transform: translateY(-1px);
+}
+
+.btn-outline {
+  border: 1.5px solid var(--color-border);
+  background-color: var(--color-surface);
+  color: var(--color-text-main);
+}
+
+.btn-outline:hover {
+  border-color: var(--color-text-main);
+  background-color: var(--color-surface-subtle);
+}
+
+.btn-link {
+  color: var(--color-text-muted);
+  text-decoration: underline;
+  padding: 8px;
+}
+
+.btn-link:hover {
+  color: var(--color-primary);
+}
+
+.btn-whatsapp {
+  background-color: #25D366;
+  color: #FFFFFF;
+  font-weight: 700;
+}
+
+.btn-whatsapp:hover {
+  background-color: #1EBE5D;
+  transform: translateY(-1px);
+}
+
+.btn.disabled, .btn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+  pointer-events: none;
+}
+
+/* Floating Decorative Bubbles in Background */
+.floating-bubble-bg {
+  position: absolute;
+  border-radius: 50%;
+  pointer-events: none;
+  z-index: 0;
+  opacity: 0.45;
+  filter: blur(2px);
+  animation: floatBubble 12s infinite ease-in-out alternate;
+}
+
+@keyframes floatBubble {
+  0% { transform: translateY(0px) rotate(0deg); }
+  50% { transform: translateY(-25px) rotate(6deg); }
+  100% { transform: translateY(-50px) rotate(-6deg); }
+}
+
+.bubble-1 {
+  width: 260px;
+  height: 260px;
+  background: radial-gradient(circle, #FFE4D6 0%, rgba(255, 228, 214, 0) 70%);
+  top: 5%;
+  left: -80px;
+}
+
+.bubble-2 {
+  width: 320px;
+  height: 320px;
+  background: radial-gradient(circle, #E8F5F8 0%, rgba(232, 245, 248, 0) 70%);
+  top: 30%;
+  right: -100px;
+  animation-duration: 16s;
+}
+
+.bubble-3 {
+  width: 200px;
+  height: 200px;
+  background: radial-gradient(circle, #EBF1EA 0%, rgba(235, 241, 234, 0) 70%);
+  bottom: 10%;
+  left: 10%;
+  animation-duration: 14s;
+}

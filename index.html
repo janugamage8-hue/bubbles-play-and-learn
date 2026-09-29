@@ -1,0 +1,674 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Bubbles | Curated Montessori & Developmental Play Boxes Sri Lanka</title>
+  <meta name="description" content="Bubbles Play & Learn Co. provides curated developmental play boxes (0-5 years) and handcrafted Sri Lankan wooden Montessori toys at accessible local prices (LKR 5,000-6,500). Safe, non-toxic and screen-free.">
+
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Quicksand:wght@600;700;800&display=swap" rel="stylesheet">
+
+  <!-- FontAwesome Icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+  <!-- Favicon -->
+  <link rel="icon" type="image/jpeg" href="assets/logo.jpg">
+  <link rel="apple-touch-icon" href="assets/logo.jpg">
+
+  <!-- Stylesheets -->
+  <link rel="stylesheet" href="css/main.css">
+  <link rel="stylesheet" href="css/components.css">
+  <link rel="stylesheet" href="css/responsive.css">
+</head>
+<body>
+
+  <!-- Floating Background Pastel Bubbles -->
+  <div class="floating-bubble-bg bubble-1"></div>
+  <div class="floating-bubble-bg bubble-2"></div>
+  <div class="floating-bubble-bg bubble-3"></div>
+
+  <!-- 1. Top Announcement Bar -->
+  <div class="announcement-bar">
+    <div class="container">
+      <span>
+        <i class="fas fa-gift"></i> <strong>Sri Lanka Islandwide Delivery</strong> | Free Delivery on Orders Over LKR 8,000 | 100% Non-Toxic Child-Safe Materials
+      </span>
+    </div>
+  </div>
+
+  <!-- 2. Main Header & Navigation -->
+  <header class="main-header">
+    <div class="container header-inner">
+      <a href="#home" class="brand-logo">
+        <img src="assets/logo.jpg" alt="Bubbles Logo" class="brand-logo-img">
+        <div>
+          <span>Bubbles</span>
+          <span class="brand-tagline">Play & Learn Co. Sri Lanka</span>
+        </div>
+      </a>
+
+      <nav>
+        <ul class="nav-links">
+          <li><a href="#home">Home</a></li>
+          <li><a href="#shop-by-age">Shop by Age <span class="nav-badge-pill">5 Stages</span></a></li>
+          <li><a href="#build-a-box">Build Your Box</a></li>
+          <li><a href="#toy-catalog">Toy Store</a></li>
+          <li><a href="#milestone-quiz">Development Quiz</a></li>
+          <li><a href="#parent-survey">Parent Survey</a></li>
+        </ul>
+      </nav>
+
+      <div class="header-actions">
+        <button class="header-action-btn" title="Saved Favorites" onclick="window.app.scrollToFavorites()" id="header-favorites-btn">
+          <i class="far fa-heart"></i>
+          <span class="badge-counter" id="wishlist-count-badge" style="display:none">0</span>
+        </button>
+
+        <button class="header-action-btn" title="View Cart" onclick="window.openCartDrawer()">
+          <i class="fas fa-shopping-basket"></i>
+          <span class="badge-counter cart-count-badge" style="display:none">0</span>
+        </button>
+
+        <button class="mobile-menu-btn" id="mobile-menu-toggle" aria-label="Toggle navigation menu">
+          <i class="fas fa-bars"></i>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- Mobile Drawer Menu -->
+  <div class="mobile-nav-drawer" id="mobile-nav-drawer">
+    <div class="mobile-nav-header">
+      <div class="brand-logo">
+        <img src="assets/logo.jpg" alt="Bubbles Logo" class="brand-logo-img">
+        <span>Bubbles</span>
+      </div>
+      <button class="btn-close-drawer" onclick="document.getElementById('mobile-nav-drawer').classList.remove('active')">&times;</button>
+    </div>
+    <ul class="mobile-nav-links">
+      <li><a href="#home" onclick="document.getElementById('mobile-nav-drawer').classList.remove('active')"><i class="fas fa-home"></i> Home <i class="fas fa-chevron-right"></i></a></li>
+      <li><a href="#shop-by-age" onclick="document.getElementById('mobile-nav-drawer').classList.remove('active')">Shop by Age (0–5+ Yrs) <i class="fas fa-chevron-right"></i></a></li>
+      <li><a href="#build-a-box" onclick="document.getElementById('mobile-nav-drawer').classList.remove('active')">Build Your Box <i class="fas fa-chevron-right"></i></a></li>
+      <li><a href="#toy-catalog" onclick="document.getElementById('mobile-nav-drawer').classList.remove('active')">Montessori Toy Store <i class="fas fa-chevron-right"></i></a></li>
+      <li><a href="#toy-store-age-section" onclick="document.getElementById('mobile-nav-drawer').classList.remove('active')">Shop by Age Shelf <i class="fas fa-chevron-right"></i></a></li>
+      <li><a href="#saved-favorites-section" onclick="document.getElementById('mobile-nav-drawer').classList.remove('active'); window.app.scrollToFavorites();"><i class="fas fa-heart text-danger"></i> Saved Favorites (<span id="mobile-wishlist-count-badge">0</span>) <i class="fas fa-chevron-right"></i></a></li>
+      <li><a href="#milestone-quiz" onclick="document.getElementById('mobile-nav-drawer').classList.remove('active')">Development Quiz <i class="fas fa-chevron-right"></i></a></li>
+      <li><a href="#parent-survey" onclick="document.getElementById('mobile-nav-drawer').classList.remove('active')">Parent Survey <i class="fas fa-chevron-right"></i></a></li>
+    </ul>
+    <div class="mobile-nav-footer">
+      <button class="btn btn-primary btn-block" onclick="document.getElementById('mobile-nav-drawer').classList.remove('active'); window.openCartDrawer();">
+        <i class="fas fa-shopping-basket"></i> View Cart Basket
+      </button>
+    </div>
+  </div>
+
+  <main>
+    <!-- 1. Home / Hero Section -->
+    <section class="section hero-section" id="home">
+      <div class="container">
+        <div class="hero-grid">
+          <div class="hero-content">
+            <div class="hero-eyebrow">
+              <i class="fas fa-seedling"></i> Play. Learn. Grow. Together.
+            </div>
+            <h1 class="hero-title">
+              Big Learning Starts with <span class="highlight-text">Little Hands</span>
+            </h1>
+            <p class="hero-subtitle">
+              Discover fun, engaging toys designed to support creativity, curiosity, learning, and development from the earliest years. Make every playtime a learning adventure.
+            </p>
+
+            <div class="hero-cta-group">
+              <a href="#build-a-box" class="btn btn-primary btn-lg">
+                <i class="fas fa-boxes"></i> Shop Our Toy Kits
+              </a>
+              <a href="#shop-by-age" class="btn btn-outline btn-lg">
+                <i class="fas fa-layer-group"></i> Shop by Age
+              </a>
+            </div>
+
+            <div class="hero-trust-bar">
+              <div class="trust-item">
+                <div class="trust-icon"><i class="fas fa-tree"></i></div>
+                <div class="trust-text">
+                  <strong>Handmade in SL</strong>
+                  <small>Local rubberwood & mara</small>
+                </div>
+              </div>
+              <div class="trust-item">
+                <div class="trust-icon"><i class="fas fa-shield-virus"></i></div>
+                <div class="trust-text">
+                  <strong>100% Non-Toxic</strong>
+                  <small>Food-grade oils & beeswax</small>
+                </div>
+              </div>
+              <div class="trust-item">
+                <div class="trust-icon"><i class="fas fa-truck-moving"></i></div>
+                <div class="trust-text">
+                  <strong>Islandwide Delivery</strong>
+                  <small>Cash on delivery ready</small>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="hero-media-wrapper">
+            <div class="hero-photo-card">
+              <div class="hero-photo-img-wrap">
+                <img src="assets/home/kids-wooden-blocks.jpg" alt="Children happily playing and building with colorful wooden block toys" class="hero-main-photo">
+                <div class="hero-photo-floating-pill">
+                  <i class="fas fa-heart text-danger"></i> 100% Screen-Free Montessori
+                </div>
+              </div>
+              <div class="hero-photo-caption">
+                <span class="hero-caption-badge"><i class="fas fa-award"></i> Sri Lankan Hardwood</span>
+                <h3>Joyful, Screen-Free Learning Through Play</h3>
+                <p>Handcrafted wooden building sets & curated developmental kits calibrated for every milestone (Ages 0 to 5+).</p>
+                <div class="hero-caption-actions">
+                  <div>
+                    <span style="font-size: 0.8rem; color: var(--color-text-muted);">Custom Play Box Sets</span><br>
+                    <strong style="font-size: 1.15rem; color: var(--color-primary);">From LKR 5,000</strong>
+                  </div>
+                  <a href="#build-a-box" class="btn btn-sm btn-primary">
+                    Shop Our Toy Kits <i class="fas fa-arrow-right"></i>
+                  </a>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Home Age Categories Showcase -->
+        <div class="home-age-bar-wrapper">
+          <div class="home-age-bar-header">
+            <span class="home-age-badge"><i class="fas fa-layer-group"></i> Shop by Age</span>
+            <h2 class="home-age-title">Explore Toys by Developmental Age</h2>
+            <p class="home-age-subtitle">Every age stage brings unique cognitive and motor milestones. Select an age category to explore matched developmental toys:</p>
+          </div>
+
+          <div class="home-age-cards-grid">
+            <a href="#shop-by-age" class="home-age-pill-card age-pill-0-1" onclick="window.app.filterByAgeGroup('0-1y')">
+              <span class="home-age-emoji">👶</span>
+              <div class="home-age-meta">
+                <strong>0–1 Years</strong>
+                <small>Infant & Sensory</small>
+              </div>
+              <i class="fas fa-chevron-right home-age-arrow"></i>
+            </a>
+
+            <a href="#shop-by-age" class="home-age-pill-card age-pill-1-2" onclick="window.app.filterByAgeGroup('1-2y')">
+              <span class="home-age-emoji">🧩</span>
+              <div class="home-age-meta">
+                <strong>1–2 Years</strong>
+                <small>Toddler Motor Skills</small>
+              </div>
+              <i class="fas fa-chevron-right home-age-arrow"></i>
+            </a>
+
+            <a href="#shop-by-age" class="home-age-pill-card age-pill-2-3" onclick="window.app.filterByAgeGroup('2-3y')">
+              <span class="home-age-emoji">🎨</span>
+              <div class="home-age-meta">
+                <strong>2–3 Years</strong>
+                <small>Practical Life & Sorting</small>
+              </div>
+              <i class="fas fa-chevron-right home-age-arrow"></i>
+            </a>
+
+            <a href="#shop-by-age" class="home-age-pill-card age-pill-3-4" onclick="window.app.filterByAgeGroup('3-4y')">
+              <span class="home-age-emoji">🔢</span>
+              <div class="home-age-meta">
+                <strong>3–4 Years</strong>
+                <small>Preschool & Early Math</small>
+              </div>
+              <i class="fas fa-chevron-right home-age-arrow"></i>
+            </a>
+
+            <a href="#shop-by-age" class="home-age-pill-card age-pill-5-plus" onclick="window.app.filterByAgeGroup('5y-plus')">
+              <span class="home-age-emoji">🚀</span>
+              <div class="home-age-meta">
+                <strong>5+ Years</strong>
+                <small>STEM & Creative Building</small>
+              </div>
+              <i class="fas fa-chevron-right home-age-arrow"></i>
+            </a>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Why Choose Educational Toys Section -->
+    <section class="section home-why-educational-section" id="why-educational-toys">
+      <div class="container">
+        <div class="section-header">
+          <span class="section-pill-tag"><i class="fas fa-shapes"></i> Purposeful Play</span>
+          <h2 class="section-title">Why Choose Educational Toys?</h2>
+          <p class="section-subtitle">
+            Thoughtfully designed Montessori toys empower children to discover the world through touch, experiment with balance, and build foundational lifelong skills.
+          </p>
+        </div>
+
+        <div class="why-educational-grid">
+          <div class="why-educational-media">
+            <img src="assets/home/kids-magnetic-tiles.jpg" alt="Children collaborating with colorful developmental toys" class="why-educational-img" loading="lazy">
+            <div class="why-image-floating-badge">
+              <i class="fas fa-brain"></i>
+              <div>
+                <strong>Active Brain Development</strong>
+                <span>100% screen-free open-ended play for focused minds</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="why-benefits-list">
+            <div class="why-benefit-card">
+              <div class="benefit-icon bg-coral"><i class="fas fa-seedling"></i></div>
+              <div class="benefit-body">
+                <h3 class="benefit-title">Supports early learning and development</h3>
+                <p class="benefit-desc">Lays vital neurological groundwork for spatial memory, pattern recognition, and language through sensory exploration.</p>
+              </div>
+            </div>
+
+            <div class="why-benefit-card">
+              <div class="benefit-icon bg-purple"><i class="fas fa-palette"></i></div>
+              <div class="benefit-body">
+                <h3 class="benefit-title">Improves creativity and imagination</h3>
+                <p class="benefit-desc">Open-ended materials without pre-set scripts inspire children to design structures, invent worlds, and think outside the box.</p>
+              </div>
+            </div>
+
+            <div class="why-benefit-card">
+              <div class="benefit-icon bg-blue"><i class="fas fa-puzzle-piece"></i></div>
+              <div class="benefit-body">
+                <h3 class="benefit-title">Develops problem-solving skills</h3>
+                <p class="benefit-desc">Hands-on trials with balance, gravity, and geometric fit build resilience, critical thinking, and logical persistence.</p>
+              </div>
+            </div>
+
+            <div class="why-benefit-card">
+              <div class="benefit-icon bg-green"><i class="fas fa-hand-holding-heart"></i></div>
+              <div class="benefit-body">
+                <h3 class="benefit-title">Improves fine motor skills</h3>
+                <p class="benefit-desc">Grasping, stacking, threading, and sorting strengthen hand muscles, pincer grip, and precise hand-eye coordination.</p>
+              </div>
+            </div>
+
+            <div class="why-benefit-card">
+              <div class="benefit-icon bg-honey"><i class="fas fa-child"></i></div>
+              <div class="benefit-body">
+                <h3 class="benefit-title">Encourages independent play</h3>
+                <p class="benefit-desc">Self-correcting Montessori designs cultivate deep concentration, autonomous focus, and quiet self-confidence.</p>
+              </div>
+            </div>
+
+            <div class="why-benefit-card">
+              <div class="benefit-icon bg-pink"><i class="fas fa-smile-beam"></i></div>
+              <div class="benefit-body">
+                <h3 class="benefit-title">Makes learning fun and engaging</h3>
+                <p class="benefit-desc">Transforms crucial milestone practices into joyful playtime adventures that kids genuinely look forward to every day.</p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="why-educational-cta">
+          <a href="#build-a-box" class="btn btn-primary btn-lg">
+            <i class="fas fa-boxes"></i> Shop Our Toy Kits
+          </a>
+          <a href="#toy-catalog" class="btn btn-outline btn-lg">
+            <i class="fas fa-store"></i> Explore All Toys
+          </a>
+        </div>
+      </div>
+    </section>
+
+    <!-- 2. Dedicated "Shop by Age" Category Section (0-1y, 1-2y, 2-3y, 3-4y, 5+ years) -->
+    <section class="section shop-by-age-section" id="shop-by-age">
+      <div class="container">
+        <div class="section-header">
+          <span class="section-pill-tag"><i class="fas fa-child"></i> Shop by Age</span>
+          <h2 class="section-title">Explore Play by Developmental Age</h2>
+          <p class="section-subtitle">
+            Every age stage brings unique cognitive and motor milestones. Choose your child's age group below to instantly explore curated developmental boxes and handcrafted toys.
+          </p>
+        </div>
+
+        <div class="shop-by-age-grid" id="shop-by-age-grid">
+          <!-- Rendered dynamically by app.js with the 5 age groups -->
+        </div>
+      </div>
+    </section>
+
+    <!-- 3. Interactive "Build Your Own Box" Section -->
+    <section class="section" id="build-a-box">
+      <div class="container">
+        <div class="section-header">
+          <span class="section-pill-tag"><i class="fas fa-puzzle-piece"></i> Custom Box Builder</span>
+          <h2 class="section-title">Build Your Custom Bubbles Box</h2>
+          <p class="section-subtitle">
+            Pick 5 to 7 developmental toys across wooden puzzles, counting games, sensory soothers, and fine-motor activities. Enjoy bundle savings up to 42% off individual retail prices!
+          </p>
+        </div>
+
+        <div id="box-builder-app">
+          <!-- Rendered dynamically by box-builder.js -->
+        </div>
+      </div>
+    </section>
+
+    <!-- 6. Full Product Catalog & Store -->
+    <section class="section" id="toy-catalog" style="background-color: var(--color-surface);">
+      <div class="container">
+        <div class="section-header">
+          <span class="section-pill-tag"><i class="fas fa-store"></i> Individual Toys & Materials</span>
+          <h2 class="section-title">Handcrafted Sri Lankan Toys & Montessori Store</h2>
+          <p class="section-subtitle">
+            Looking for a specific wooden puzzle, counting toy, or sensory tool? Browse our full collection of over 30 authentic Sri Lankan artisanal and educational products.
+          </p>
+        </div>
+
+        <!-- Dedicated Age Category Section (0–1 Year, 1–2 Years, 2–3 Years, 3–4 Years, 5+ Years) -->
+        <div class="toy-store-age-section" id="toy-store-age-section">
+          <div class="age-category-bar-header">
+            <div class="age-category-title-group">
+              <span class="age-category-bar-badge"><i class="fas fa-layer-group"></i> Shop by Age</span>
+              <h3 class="age-bar-title">Shop by Age Category</h3>
+            </div>
+            <p class="age-bar-subtitle">
+              Click any age group below to view developmental toys matched to their milestones:
+            </p>
+          </div>
+
+          <div class="age-categories-shelf" id="age-category-pills-shelf">
+            <!-- Rendered dynamically by app.js: All Toys, 0–1 Year, 1–2 Years, 2–3 Years, 3–4 Years, 5+ Years -->
+          </div>
+        </div>
+
+        <div class="catalog-controls">
+          <!-- Search & Filter Options Bar -->
+          <div class="catalog-search-filter-bar">
+            <div class="search-input-box">
+              <i class="fas fa-search"></i>
+              <input type="text" id="search-catalog-input" placeholder="Search toys (e.g. elephant, blocks, sensory, math)..." />
+            </div>
+
+            <div class="filter-selects-group">
+              <select id="age-filter-select">
+                <option value="all">All Ages</option>
+                <option value="0-1y">0–1 Year</option>
+                <option value="1-2y">1–2 Years</option>
+                <option value="2-3y">2–3 Years</option>
+                <option value="3-4y">3–4 Years</option>
+                <option value="5y-plus">5+ Years</option>
+              </select>
+
+              <select id="sort-catalog-select">
+                <option value="featured">Featured First</option>
+                <option value="price-low">Price: Low to High</option>
+                <option value="price-high">Price: High to Low</option>
+                <option value="rating">Highest Rated</option>
+              </select>
+
+              <button type="button" class="btn btn-outline filter-fav-btn" id="filter-favorites-toggle-btn" onclick="window.app.toggleFavoritesCatalogFilter()" title="Filter catalog to show only your saved favorites">
+                <i class="far fa-heart"></i> <span id="catalog-fav-btn-label">Favorites</span> (<span class="fav-count-badge-inline">0</span>)
+              </button>
+            </div>
+          </div>
+
+          <div style="margin-top: 14px; font-size: 0.88rem; color: var(--color-text-muted);" id="catalog-results-count">
+            Showing all educational toys
+          </div>
+        </div>
+
+        <!-- Products Grid -->
+        <div class="products-grid" id="products-grid">
+          <!-- Rendered dynamically by app.js -->
+        </div>
+      </div>
+    </section>
+
+    <!-- Dedicated Saved Favorites Section -->
+    <section class="section saved-favorites-section" id="saved-favorites-section">
+      <div class="container">
+        <div class="section-header">
+          <span class="section-pill-tag"><i class="fas fa-heart text-danger"></i> Wishlist & Collections</span>
+          <h2 class="section-title">Saved Favorites</h2>
+          <p class="section-subtitle">
+            All the developmental toys and Montessori materials you have favorited are saved here for easy review and one-click checkout.
+          </p>
+        </div>
+
+        <div id="saved-favorites-container">
+          <!-- Rendered dynamically by app.js -->
+        </div>
+      </div>
+    </section>
+
+    <!-- 7. Parent Milestone Quiz Section -->
+    <section class="section" id="milestone-quiz">
+      <div class="container">
+        <div class="section-header">
+          <span class="section-pill-tag"><i class="fas fa-clipboard-check"></i> 60-Second Recommender</span>
+          <h2 class="section-title">Not Sure What Your Child Needs Next?</h2>
+          <p class="section-subtitle">
+            Take our interactive 4-question milestone assessment to discover the exact play materials and Montessori activities recommended for their developmental stage.
+          </p>
+        </div>
+
+        <div class="quiz-wrapper" id="quiz-app">
+          <!-- Rendered dynamically by quiz.js -->
+        </div>
+      </div>
+    </section>
+
+    <!-- 8. Sri Lankan Parent Research Survey Section -->
+    <section class="section" id="parent-survey" style="background-color: var(--color-surface);">
+      <div class="container">
+        <div class="section-header">
+          <span class="section-pill-tag"><i class="fas fa-chart-line"></i> Community Research</span>
+          <h2 class="section-title">Sri Lankan Parents Market Survey</h2>
+          <p class="section-subtitle">
+            Help us make educational play accessible to every family in Sri Lanka. Share your preferred box pricing and developmental priorities to shape our local craft.
+          </p>
+        </div>
+
+        <div id="parent-survey-app">
+          <!-- Rendered dynamically by survey.js -->
+        </div>
+      </div>
+    </section>
+
+    <!-- 9. Why Sri Lankan Parents Choose Bubbles -->
+    <section class="section">
+      <div class="container">
+        <div class="section-header">
+          <span class="section-pill-tag"><i class="fas fa-heart"></i> The Bubbles Promise</span>
+          <h2 class="section-title">Designed for Joy, Built to Last Generations</h2>
+          <p class="section-subtitle">
+            Why families across Colombo, Kandy, Galle, and Jaffna trust Bubbles for their children's formative years.
+          </p>
+        </div>
+
+        <div class="boxes-grid" style="grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));">
+          <div class="box-card" style="padding: 30px; text-align: center;">
+            <div style="font-size: 2.8rem; margin-bottom: 16px;">🇱🇰</div>
+            <h3 style="font-size: 1.25rem; margin-bottom: 10px;">Artisanal Sri Lankan Wood</h3>
+            <p style="font-size: 0.9rem; color: var(--color-text-muted);">
+              Sustainably carved by master Sri Lankan woodturners using plantation rubberwood, mahogany, and albizia. Hand-sanded smooth with zero sharp edges.
+            </p>
+          </div>
+
+          <div class="box-card" style="padding: 30px; text-align: center;">
+            <div style="font-size: 2.8rem; margin-bottom: 16px;">🌿</div>
+            <h3 style="font-size: 1.25rem; margin-bottom: 10px;">Zero Toxic Paints</h3>
+            <p style="font-size: 0.9rem; color: var(--color-text-muted);">
+              Finished exclusively with organic cold-pressed beeswax, food-grade mineral oils, and EN71 certified lead-free water-based pigments safe for curious mouths.
+            </p>
+          </div>
+
+          <div class="box-card" style="padding: 30px; text-align: center;">
+            <div style="font-size: 2.8rem; margin-bottom: 16px;">💡</div>
+            <h3 style="font-size: 1.25rem; margin-bottom: 10px;">Curated by Educators</h3>
+            <p style="font-size: 0.9rem; color: var(--color-text-muted);">
+              No flashing lights or battery-operated noise. Every item is carefully chosen to cultivate deep concentration, spatial intuition, and self-directed exploration.
+            </p>
+          </div>
+
+          <div class="box-card" style="padding: 30px; text-align: center;">
+            <div style="font-size: 2.8rem; margin-bottom: 16px;">🚚</div>
+            <h3 style="font-size: 1.25rem; margin-bottom: 10px;">Safe Islandwide Shipping</h3>
+            <p style="font-size: 0.9rem; color: var(--color-text-muted);">
+              Fast 2–3 day tracked delivery to all 25 districts across Sri Lanka. Cash on Delivery (COD) and direct bank transfer supported with every order.
+            </p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 10. Frequently Asked Questions -->
+    <section class="section" style="background-color: var(--color-surface);">
+      <div class="container" style="max-width: 860px;">
+        <div class="section-header">
+          <span class="section-pill-tag"><i class="fas fa-question-circle"></i> FAQ</span>
+          <h2 class="section-title">Frequently Asked Questions</h2>
+        </div>
+
+        <div style="display: flex; flex-direction: column; gap: 16px;">
+          <details class="box-card" style="padding: 20px; cursor: pointer;">
+            <summary style="font-weight: 700; font-size: 1.05rem;">Why is Bubbles priced at LKR 5,000–6,500 per box?</summary>
+            <p style="margin-top: 12px; font-size: 0.92rem; color: var(--color-text-muted);">
+              Imported Australian and European educational toy subscription boxes often exceed AUD 120–130 (over LKR 25,000–30,000 after shipping and customs). By manufacturing our wooden toys right here in Sri Lanka and wholesale bundling 5–7 items together, we pass savings of over 40% directly to local parents without sacrificing safety or quality.
+            </p>
+          </details>
+
+          <details class="box-card" style="padding: 20px; cursor: pointer;">
+            <summary style="font-weight: 700; font-size: 1.05rem;">Can I customize what goes into my child's box?</summary>
+            <p style="margin-top: 12px; font-size: 0.92rem; color: var(--color-text-muted);">
+              Yes! Use our interactive <a href="#build-a-box" style="color: var(--color-primary); font-weight:700;">Build Your Box</a> tool to select your child's age milestone and handpick 5 to 7 specific toys across our puzzle, math, sensory, and art categories.
+            </p>
+          </details>
+
+          <details class="box-card" style="padding: 20px; cursor: pointer;">
+            <summary style="font-weight: 700; font-size: 1.05rem;">What payment methods are supported in Sri Lanka?</summary>
+            <p style="margin-top: 12px; font-size: 0.92rem; color: var(--color-text-muted);">
+              We accept Cash on Delivery (COD) islandwide, Direct Bank Transfer (Commercial Bank / Sampath Bank), FriMi / Genie transfers, and Credit/Debit Cards with Koko Pay in 3 installments.
+            </p>
+          </details>
+
+          <details class="box-card" style="padding: 20px; cursor: pointer;">
+            <summary style="font-weight: 700; font-size: 1.05rem;">Are the materials safe for babies who mouth toys?</summary>
+            <p style="margin-top: 12px; font-size: 0.92rem; color: var(--color-text-muted);">
+              Absolutely. Our newborn and toddler toys are finished with pure beeswax, natural mineral oil, and non-toxic water-based paints compliant with European EN71 safety standards.
+            </p>
+          </details>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <!-- Footer -->
+  <footer style="background-color: #1E272D; color: #FFFFFF; padding: 70px 0 30px 0;">
+    <div class="container" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 40px; margin-bottom: 50px;">
+      <div>
+        <div class="brand-logo" style="color: #FFFFFF; margin-bottom: 16px;">
+          <img src="assets/logo.jpg" alt="Bubbles Logo" class="brand-logo-img brand-logo-img-footer">
+          <span>Bubbles</span>
+        </div>
+        <p style="font-size: 0.88rem; color: #94A3B8; line-height: 1.6; margin-bottom: 20px;">
+          Curated Montessori and developmental play boxes for children aged 0–5 years in Sri Lanka. Screen-free, child-safe, and locally crafted with love.
+        </p>
+        <div style="display: flex; gap: 12px; font-size: 1.2rem;">
+          <a href="#" style="color: #FFFFFF;"><i class="fab fa-instagram"></i></a>
+          <a href="#" style="color: #FFFFFF;"><i class="fab fa-facebook"></i></a>
+          <a href="https://wa.me/94779882000" target="_blank" style="color: #25D366;"><i class="fab fa-whatsapp"></i></a>
+        </div>
+      </div>
+
+      <div>
+        <h4 style="font-size: 1.05rem; color: #FFFFFF; margin-bottom: 16px;">Shop by Age</h4>
+        <ul style="list-style: none; display: flex; flex-direction: column; gap: 10px; font-size: 0.88rem; color: #94A3B8;">
+          <li><a href="#toy-catalog" onclick="window.app.filterByAgeGroup('0-1y')">🍼 0–1 Year</a></li>
+          <li><a href="#toy-catalog" onclick="window.app.filterByAgeGroup('1-2y')">🌱 1–2 Years</a></li>
+          <li><a href="#toy-catalog" onclick="window.app.filterByAgeGroup('2-3y')">🧩 2–3 Years</a></li>
+          <li><a href="#toy-catalog" onclick="window.app.filterByAgeGroup('3-4y')">🚀 3–4 Years</a></li>
+          <li><a href="#toy-catalog" onclick="window.app.filterByAgeGroup('5y-plus')">🎓 5+ Years</a></li>
+        </ul>
+      </div>
+
+      <div>
+        <h4 style="font-size: 1.05rem; color: #FFFFFF; margin-bottom: 16px;">Quick Links</h4>
+        <ul style="list-style: none; display: flex; flex-direction: column; gap: 10px; font-size: 0.88rem; color: #94A3B8;">
+          <li><a href="#build-a-box">Build Your Custom Box</a></li>
+          <li><a href="#toy-store-age-section">Shop by Age Category</a></li>
+          <li><a href="#toy-catalog">Montessori Toy Store</a></li>
+          <li><a href="#saved-favorites-section" onclick="window.app.scrollToFavorites()">Saved Favorites</a></li>
+          <li><a href="#milestone-quiz">Development Milestone Quiz</a></li>
+          <li><a href="#parent-survey">Parent Survey</a></li>
+        </ul>
+      </div>
+
+      <div>
+        <h4 style="font-size: 1.05rem; color: #FFFFFF; margin-bottom: 16px;">Islandwide Delivery</h4>
+        <p style="font-size: 0.88rem; color: #94A3B8; line-height: 1.6; margin-bottom: 12px;">
+          Delivering to all 25 districts including Colombo, Gampaha, Kandy, Galle, Kurunegala, and Jaffna.
+        </p>
+        <div style="background-color: #2D3748; padding: 12px; border-radius: 8px; font-size: 0.82rem; color: #E2E8F0;">
+          <i class="fas fa-headset text-primary"></i> Play Consultant: +94 77 988 2000<br>
+          <i class="fas fa-envelope text-primary"></i> hello@bubbles.lk
+        </div>
+      </div>
+    </div>
+
+    <div class="container" style="border-top: 1px solid #2D3748; padding-top: 24px; text-align: center; font-size: 0.8rem; color: #64748B;">
+      &copy; 2026 Bubbles Play & Learn (Pvt) Ltd. All rights reserved. Handcrafted with care in Sri Lanka.
+    </div>
+  </footer>
+
+  <!-- Slide-Over Cart Drawer -->
+  <div class="cart-drawer-container" id="cart-drawer">
+    <div id="cart-drawer-container">
+      <!-- Rendered dynamically by cart.js -->
+    </div>
+  </div>
+
+  <!-- Checkout & Order Success Modal -->
+  <div class="modal-container" id="checkout-modal-container">
+    <!-- Rendered dynamically by cart.js -->
+  </div>
+
+  <!-- Quick View Modal -->
+  <div class="modal-container" id="quick-view-modal">
+    <div class="modal-backdrop" onclick="window.app.closeQuickView()"></div>
+    <div class="checkout-modal-dialog quick-view-dialog">
+      <div class="qv-modal-header-bar">
+        <div class="qv-header-badge">
+          <span class="bubble-icon-mini">🫧</span>
+          <strong>Bubbles Play & Learn</strong> • Curated Milestone Showcase
+        </div>
+        <button class="btn-close-modal" onclick="window.app.closeQuickView()" title="Close dialog (Esc)" aria-label="Close dialog">&times;</button>
+      </div>
+      <div class="checkout-modal-body qv-modal-body" id="quick-view-content">
+        <!-- Rendered dynamically by app.js -->
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast Notifications Container -->
+  <div class="toast-container" id="toast-container"></div>
+
+  <!-- Floating WhatsApp Chat Widget -->
+  <a class="floating-whatsapp-btn" href="https://wa.me/94779882000?text=Hi%20Bubbles!%20I%20have%20a%20question%20about%20your%20curated%20educational%20boxes." target="_blank" title="Chat with a Play Specialist on WhatsApp">
+    <i class="fab fa-whatsapp"></i>
+  </a>
+
+  <!-- Application Modules -->
+  <script type="module" src="js/products.js"></script>
+  <script type="module" src="js/cart.js"></script>
+  <script type="module" src="js/box-builder.js"></script>
+  <script type="module" src="js/quiz.js"></script>
+  <script type="module" src="js/survey.js"></script>
+  <script type="module" src="js/app.js"></script>
+</body>
+</html>

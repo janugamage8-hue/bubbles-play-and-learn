@@ -1,0 +1,27 @@
+# Dependencies
+node_modules/
+package-lock.json
+
+# Production and deployment
+.vercel/
+.output/
+
+# Logs and system
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# OS-specific
+.DS_Store
+Thumbs.db
+Desktop.ini
+
+# Environment variables
+.env
+.env*.local
+
+# Internal scratch tools & temp files
+edge-*.html
+scratch/
+check_products_data.mjs
