@@ -1,5 +1,5 @@
 // Test script to verify all endpoints
-const http = require('http');
+import http from 'http';
 
 const urls = [
   '/',

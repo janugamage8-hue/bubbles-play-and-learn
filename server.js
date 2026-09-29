@@ -1,9 +1,13 @@
 // Bubbles Play & Learn Co. - Lightweight Local Static Web Server
 // Runs out-of-the-box with Node.js (or agy-node.cmd) with zero dependencies.
 
-const http = require('http');
-const fs = require('fs');
-const path = require('path');
+import http from 'http';
+import fs from 'fs';
+import path from 'path';
+import { fileURLToPath } from 'url';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 const PORT = process.env.PORT || 3000;
 const PUBLIC_DIR = __dirname;

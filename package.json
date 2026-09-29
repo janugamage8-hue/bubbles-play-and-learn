@@ -3,6 +3,7 @@
   "version": "1.0.0",
   "description": "Bubbles Play & Learn Co. - Handcrafted Montessori & Developmental Toys Sri Lanka",
   "main": "server.js",
+  "type": "module",
   "scripts": {
     "start": "node server.js",
     "test": "node test-logic.mjs && node test-server.js",
