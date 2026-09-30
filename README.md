@@ -47,8 +47,20 @@ A modern, responsive e-commerce web platform for **Bubbles**, designed specifica
    - Free shipping progress bar (Free delivery over LKR 8,000; flat LKR 450 otherwise).
    - Eco-kraft gift wrapping toggle (+LKR 350).
    - Islandwide shipping to all 25 districts of Sri Lanka.
-   - Flexible payment options: Cash on Delivery (COD), Direct Bank Transfer / FriMi / Genie (Commercial Bank account details with slip instructions), and Card / Koko Pay simulator.
+   - Flexible payment options: Cash on Delivery (COD), Direct Bank Transfer / FriMi / Genie, and Card / Koko Pay simulator.
    - Instant printable order invoice receipt and direct WhatsApp confirmation integration (+94 77 988 2000).
+
+7. **Supabase Cloud Order Processing & Storefront Sync**:
+   - Cloud database persistence in PostgreSQL `orders` table.
+   - Resilient multi-tier fallback: automatic schema column fallback, minimal insert recovery, and persistent browser storage backups.
+   - Realtime order synchronization and instant WhatsApp order fallback.
+
+8. **Authenticated Admin Portal (`/admin` / `admin.html`)**:
+   - Supabase Auth email/password login + instant API key direct dashboard access.
+   - KPI metrics: Total Orders, Pending Fulfillment, In Transit / Courier, Delivered, Total Sales (LKR).
+   - Real-time search, status filtering, and live fulfillment updater (`Pending` → `Packed` → `Handed to Courier` → `Delivered`).
+   - One-click customer WhatsApp messaging with pre-filled order status notifications.
+   - Detailed itemization popovers and in-browser Supabase credentials manager.
 
 ---
 
@@ -59,10 +71,10 @@ From PowerShell or terminal in this folder:
 ```powershell
 agy-node.cmd server.js
 ```
-Then open your browser to: **`http://localhost:3000`**
+Then open your browser to: **`http://localhost:3000`** (or **`http://localhost:3000/admin.html`** for Admin Portal).
 
 ### Option 2: Direct File Open
-You can also directly double-click **`index.html`** in any modern web browser.
+You can also directly double-click **`index.html`** or **`admin.html`** in any modern web browser.
 
 ---
 
@@ -71,19 +83,24 @@ You can also directly double-click **`index.html`** in any modern web browser.
 ```
 bubbles/
 ├── index.html              # Main single-page application structure & semantic markup
+├── admin.html              # Authenticated Admin Dashboard & fulfillment manager
+├── supabase-schema.sql     # PostgreSQL database schema, RLS policies & grants
+├── vercel.json             # Vercel production edge routing & clean URL config
 ├── css/
 │   ├── main.css            # Base design tokens, warm pastel palette, typography
 │   ├── components.css      # Header, Hero, Cards, Box Builder, Cart, Modals
-│   └── responsive.css      # Mobile, tablet, and desktop responsive optimizations
+│   ├── responsive.css      # Mobile, tablet, and desktop responsive optimizations
+│   └── admin.css           # Admin Portal design system and responsive tables
 ├── js/
 │   ├── products.js         # Complete catalog & curated box data in LKR
 │   ├── app.js              # Application state, routing/filtering, search, toasts
 │   ├── box-builder.js      # Interactive 5-7 item custom box builder
 │   ├── quiz.js             # 4-step developmental stage quiz
 │   ├── cart.js             # Slide-over cart, promo codes, islandwide checkout
-│   └── survey.js           # Parent research survey & live chart visualizer
+│   ├── survey.js           # Parent research survey & live chart visualizer
+│   └── supabase-client.js  # Supabase JS client, orders service & admin auth
 ├── server.js               # Zero-dependency local Node.js static web server
-├── test-server.js          # Endpoint test script (10/10 endpoints verified)
-├── test-logic.mjs          # Core business logic unit test
+├── test-server.js          # Endpoint test script (20/20 endpoints verified)
+├── test-logic.mjs          # Core business logic & order pipeline unit tests
 └── README.md               # Documentation & user guide
 ```
