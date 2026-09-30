@@ -142,8 +142,8 @@ export async function submitOrderToSupabase(orderData) {
 
   const orderNumber = orderData.orderId || ('BUB-' + Math.floor(100000 + Math.random() * 900000));
 
-  // Database payload conforming to public.orders schema
-  const payload = {
+  // Full payload with all convenience fields
+  const fullPayload = {
     order_number: orderNumber,
     customer_name: customer.fullName || customer.name || 'Valued Customer',
     customer_phone: customer.phone || '',
@@ -157,10 +157,22 @@ export async function submitOrderToSupabase(orderData) {
     status: 'Pending'
   };
 
+  // Minimal core payload (in case user table only has basic schema without order_number)
+  const corePayload = {
+    customer_name: fullPayload.customer_name,
+    customer_phone: fullPayload.customer_phone,
+    customer_address: fullPayload.customer_address,
+    district: fullPayload.district,
+    items: fullPayload.items,
+    total_amount: fullPayload.total_amount,
+    payment_method: fullPayload.payment_method,
+    status: fullPayload.status
+  };
+
   if (!client) {
     console.info('ℹ️ Supabase credentials not set or client unavailable. Storing order locally.');
     const demoOrder = {
-      ...payload,
+      ...fullPayload,
       id: 'local-' + Date.now(),
       created_at: new Date().toISOString(),
       isLocalOnly: true
@@ -176,65 +188,112 @@ export async function submitOrderToSupabase(orderData) {
   }
 
   try {
-    let savedOrderData = null;
+    // Helper to insert with select/minimal fallback
+    async function tryInsert(p) {
+      const res = await client.from('orders').insert([p]).select();
+      if (!res.error) return res;
 
-    // 1. Attempt insert with .select() to get generated columns (e.g. id, created_at)
-    const { data, error } = await client
-      .from('orders')
-      .insert([payload])
-      .select();
-
-    if (!error && Array.isArray(data) && data.length > 0) {
-      savedOrderData = data[0];
-    } else if (error) {
-      // 2. Fallback: If select failed due to an RLS select restriction, try pure insert
-      console.warn('Initial insert with select encountered notice, trying direct insert:', error.message);
-      const { error: retryErr } = await client
-        .from('orders')
-        .insert([payload]);
-
-      if (retryErr) {
-        console.error('❌ Supabase order submission error:', retryErr);
-        // Save to local backup so customer details are NEVER lost!
-        saveLocalOrderBackup({
-          ...payload,
-          id: 'offline-' + Date.now(),
-          created_at: new Date().toISOString(),
-          isLocalOnly: true,
-          syncStatus: 'pending_sync',
-          errorNotice: retryErr.message
-        });
-        return { success: false, error: retryErr.message };
+      // If select failed (often due to RLS select restrictions on anon), try minimal insert
+      if (res.error && res.error.code !== 'PGRST204') {
+        const minRes = await client.from('orders').insert([p]);
+        if (!minRes.error) return { data: [p], error: null };
       }
-      savedOrderData = {
-        ...payload,
-        id: 'supa-' + Date.now(),
-        created_at: new Date().toISOString()
-      };
-    } else if (Array.isArray(data) && data.length === 0) {
-      // In case select returned 0 rows because of RLS policy filtering
-      savedOrderData = {
-        ...payload,
-        id: 'supa-' + Date.now(),
-        created_at: new Date().toISOString()
-      };
+      return res;
     }
 
-    // Persist to local backup history
-    saveLocalOrderBackup(savedOrderData || payload);
+    let insertRes = await tryInsert(fullPayload);
 
-    return { success: true, data: savedOrderData || payload };
+    // If failed due to a missing column (e.g. order_number or customer_email not yet migrated in Supabase):
+    if (insertRes.error && (insertRes.error.code === 'PGRST204' || (insertRes.error.message && insertRes.error.message.includes('column')))) {
+      console.warn('Full schema insert failed due to column mismatch. Retrying with core schema columns...');
+      insertRes = await tryInsert(corePayload);
+    }
+
+    if (insertRes.error) {
+      console.error('❌ Supabase order submission error:', insertRes.error);
+      // Preserve order in local storage backup so the customer/store never loses it!
+      const offlineRecord = {
+        ...fullPayload,
+        id: 'offline-' + Date.now(),
+        created_at: new Date().toISOString(),
+        isLocalOnly: true,
+        syncStatus: 'pending_sync',
+        errorNotice: insertRes.error.message
+      };
+      saveLocalOrderBackup(offlineRecord);
+      return { success: false, error: insertRes.error.message, data: offlineRecord };
+    }
+
+    const savedOrderData = (insertRes.data && insertRes.data[0]) 
+      ? { ...fullPayload, ...insertRes.data[0] }
+      : { ...fullPayload, id: 'supa-' + Date.now(), created_at: new Date().toISOString() };
+
+    // Persist to local backup history as verified saved
+    saveLocalOrderBackup(savedOrderData);
+
+    return { success: true, data: savedOrderData };
   } catch (err) {
     console.error('❌ Unexpected error submitting order:', err);
-    saveLocalOrderBackup({
-      ...payload,
+    const offlineRecord = {
+      ...fullPayload,
       id: 'offline-' + Date.now(),
       created_at: new Date().toISOString(),
       isLocalOnly: true,
       syncStatus: 'pending_sync'
-    });
-    return { success: false, error: err.message || 'Network connection failed' };
+    };
+    saveLocalOrderBackup(offlineRecord);
+    return { success: false, error: err.message || 'Network connection failed', data: offlineRecord };
   }
+}
+
+/**
+ * Synchronizes any pending local offline orders to Supabase cloud.
+ * @returns {Promise<{synced: number, failed: number}>}
+ */
+export async function syncPendingLocalOrders() {
+  const client = getSupabaseClient();
+  if (!client) return { synced: 0, failed: 0 };
+
+  const localOrders = getLocalOrders();
+  let synced = 0;
+  let failed = 0;
+
+  for (const order of localOrders) {
+    if (order.isLocalOnly || order.syncStatus === 'pending_sync') {
+      try {
+        const payload = {
+          order_number: order.order_number,
+          customer_name: order.customer_name,
+          customer_phone: order.customer_phone,
+          customer_email: order.customer_email || null,
+          customer_address: order.customer_address,
+          district: order.district,
+          delivery_notes: order.delivery_notes || '',
+          items: order.items,
+          total_amount: Number(order.total_amount) || 0,
+          payment_method: order.payment_method || 'cod',
+          status: order.status || 'Pending'
+        };
+
+        const { error } = await client.from('orders').insert([payload]);
+        if (!error) {
+          order.isLocalOnly = false;
+          order.syncStatus = 'synced';
+          synced++;
+        } else {
+          failed++;
+        }
+      } catch (e) {
+        failed++;
+      }
+    }
+  }
+
+  if (synced > 0) {
+    localStorage.setItem(LOCAL_ORDERS_STORAGE_KEY, JSON.stringify(localOrders));
+  }
+
+  return { synced, failed };
 }
 
 /**
