@@ -1,0 +1,764 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Bubbles Admin Portal | Orders & Fulfillment Dashboard</title>
+  <meta name="description" content="Bubbles Play & Learn Co. Administrator Dashboard for managing orders, courier dispatches, and customer communications in Sri Lanka.">
+
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Quicksand:wght@600;700;800&display=swap" rel="stylesheet">
+
+  <!-- FontAwesome Icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+  <!-- Favicon -->
+  <link rel="icon" type="image/jpeg" href="/assets/logo.jpg">
+
+  <!-- Stylesheets -->
+  <link rel="stylesheet" href="/css/admin.css">
+
+  <!-- Supabase JS Client CDN -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body class="admin-body">
+
+  <!-- Top Navigation Bar -->
+  <header class="admin-navbar">
+    <div class="admin-nav-container">
+      <a href="/admin.html" class="admin-brand">
+        <img src="/assets/logo.jpg" alt="Bubbles Logo" class="admin-logo-img">
+        <div class="admin-brand-info">
+          <h1>Bubbles Admin</h1>
+          <span class="admin-badge-pill">Fulfillment & Orders</span>
+        </div>
+      </a>
+
+      <div class="admin-nav-actions" id="admin-nav-actions">
+        <!-- Live Connection Status Indicator -->
+        <button type="button" class="btn-adm btn-adm-secondary btn-adm-sm" onclick="openConfigModal()" id="btn-config-status" title="View or change Supabase credentials">
+          <i class="fas fa-database"></i> <span id="nav-config-label">Supabase Config</span>
+        </button>
+
+        <a href="/" target="_blank" class="btn-adm btn-adm-secondary btn-adm-sm" title="Open Storefront in new tab">
+          <i class="fas fa-store"></i> <span>View Store</span>
+        </a>
+
+        <!-- Authenticated User Tag & Sign Out (Visible when logged in) -->
+        <div id="auth-controls" style="display: none; align-items: center; gap: 8px;">
+          <div class="admin-user-tag" id="admin-user-tag">
+            <i class="fas fa-shield-alt text-primary"></i>
+            <span id="admin-user-email">admin@bubbles.lk</span>
+          </div>
+          <button type="button" class="btn-adm btn-adm-danger btn-adm-sm" onclick="handleLogout()" title="Sign out of Admin Dashboard">
+            <i class="fas fa-sign-out-alt"></i> Sign Out
+          </button>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <!-- ==============================================================================
+       VIEW 1: ADMIN LOGIN SCREEN (Default when unauthenticated)
+       ============================================================================== -->
+  <main id="admin-login-view" class="admin-auth-wrapper">
+    <div class="admin-login-card">
+      <img src="/assets/logo.jpg" alt="Bubbles Play & Learn Logo" class="admin-login-logo">
+      <h2>Admin Portal Login</h2>
+      <p class="subtitle">Bubbles Play & Learn Co. Orders System</p>
+
+      <!-- Error / Notice Alert Container -->
+      <div id="login-alert" style="display: none;"></div>
+
+      <form id="admin-login-form" onsubmit="handleLoginSubmit(event)">
+        <div class="form-field">
+          <label for="admin-email"><i class="fas fa-envelope"></i> Administrator Email</label>
+          <input type="email" id="admin-email" name="email" required placeholder="admin@bubbles.lk" autocomplete="email">
+        </div>
+
+        <div class="form-field">
+          <label for="admin-password"><i class="fas fa-lock"></i> Password</label>
+          <input type="password" id="admin-password" name="password" required placeholder="••••••••••••" autocomplete="current-password">
+        </div>
+
+        <button type="submit" class="btn-adm btn-adm-primary" id="btn-login-submit" style="width: 100%; padding: 12px; font-size: 0.95rem; margin-top: 6px;">
+          <i class="fas fa-sign-in-alt"></i> Sign In to Dashboard
+        </button>
+      </form>
+
+      <!-- Initial Setup Guide -->
+      <div class="admin-setup-hint">
+        <strong><i class="fas fa-info-circle text-primary"></i> First-time Admin Setup:</strong><br>
+        1. Open your <strong>Supabase Dashboard &gt; Authentication &gt; Users</strong>.<br>
+        2. Click <strong>Add User &gt; Create User</strong> and set your admin email and password.<br>
+        3. Run the schema in <code>supabase-schema.sql</code> in the Supabase SQL Editor.<br>
+        4. Enter your Supabase Project URL and Anon Key via the <strong>Supabase Config</strong> button above.
+      </div>
+    </div>
+  </main>
+
+  <!-- ==============================================================================
+       VIEW 2: MAIN ORDERS & FULFILLMENT DASHBOARD (Visible when authenticated)
+       ============================================================================== -->
+  <main id="admin-dashboard-view" class="admin-main-container" style="display: none;">
+    
+    <!-- Top KPI Cards -->
+    <section class="admin-kpi-grid">
+      <div class="kpi-card">
+        <div>
+          <div class="kpi-title">Total Orders</div>
+          <div class="kpi-value" id="kpi-total-orders">0</div>
+        </div>
+        <div class="kpi-icon kpi-icon-total"><i class="fas fa-box-open"></i></div>
+      </div>
+
+      <div class="kpi-card">
+        <div>
+          <div class="kpi-title">Pending Fulfillment</div>
+          <div class="kpi-value" id="kpi-pending-orders" style="color: #D97706;">0</div>
+        </div>
+        <div class="kpi-icon kpi-icon-pending"><i class="fas fa-clock"></i></div>
+      </div>
+
+      <div class="kpi-card">
+        <div>
+          <div class="kpi-title">In Transit / Courier</div>
+          <div class="kpi-value" id="kpi-transit-orders" style="color: #4F46E5;">0</div>
+        </div>
+        <div class="kpi-icon kpi-icon-transit"><i class="fas fa-shipping-fast"></i></div>
+      </div>
+
+      <div class="kpi-card">
+        <div>
+          <div class="kpi-title">Delivered</div>
+          <div class="kpi-value" id="kpi-delivered-orders" style="color: #059669;">0</div>
+        </div>
+        <div class="kpi-icon kpi-icon-delivered"><i class="fas fa-check-double"></i></div>
+      </div>
+
+      <div class="kpi-card">
+        <div>
+          <div class="kpi-title">Total Revenue (LKR)</div>
+          <div class="kpi-value" id="kpi-total-revenue" style="color: #E06D53; font-size: 1.35rem;">LKR 0</div>
+        </div>
+        <div class="kpi-icon kpi-icon-revenue"><i class="fas fa-coins"></i></div>
+      </div>
+    </section>
+
+    <!-- Filter & Search Toolbar -->
+    <section class="admin-toolbar-card">
+      <div class="admin-filter-tabs">
+        <button class="filter-pill active" onclick="setFilterStatus('all')" data-status="all">
+          All Orders <span class="count" id="count-all">0</span>
+        </button>
+        <button class="filter-pill" onclick="setFilterStatus('Pending')" data-status="Pending">
+          Pending <span class="count" id="count-pending">0</span>
+        </button>
+        <button class="filter-pill" onclick="setFilterStatus('Packed')" data-status="Packed">
+          Packed <span class="count" id="count-packed">0</span>
+        </button>
+        <button class="filter-pill" onclick="setFilterStatus('Handed to Courier')" data-status="Handed to Courier">
+          In Courier <span class="count" id="count-courier">0</span>
+        </button>
+        <button class="filter-pill" onclick="setFilterStatus('Delivered')" data-status="Delivered">
+          Delivered <span class="count" id="count-delivered">0</span>
+        </button>
+        <button class="filter-pill" onclick="setFilterStatus('Cancelled')" data-status="Cancelled">
+          Cancelled <span class="count" id="count-cancelled">0</span>
+        </button>
+      </div>
+
+      <div style="display: flex; align-items: center; gap: 12px; flex-wrap: wrap;">
+        <div class="admin-search-box">
+          <i class="fas fa-search admin-search-icon"></i>
+          <input type="text" id="admin-search-input" class="admin-search-input" placeholder="Search customer, phone, district, ref..." oninput="handleSearchInput(event)">
+        </div>
+
+        <button type="button" class="btn-adm btn-adm-secondary" onclick="loadOrders()" id="btn-refresh" title="Reload orders">
+          <i class="fas fa-sync-alt" id="refresh-icon"></i> Refresh
+        </button>
+      </div>
+    </section>
+
+    <!-- Orders Table -->
+    <section class="orders-table-wrapper">
+      <table class="orders-table" id="orders-table">
+        <thead>
+          <tr>
+            <th>Order Ref & Date</th>
+            <th>Customer & Contact</th>
+            <th>Delivery Address</th>
+            <th>Items Summary</th>
+            <th>Total Amount</th>
+            <th>Status</th>
+            <th>Fulfillment & Actions</th>
+          </tr>
+        </thead>
+        <tbody id="orders-tbody">
+          <!-- Dynamically populated by JavaScript -->
+        </tbody>
+      </table>
+
+      <!-- Empty State -->
+      <div id="orders-empty-state" class="admin-empty-state" style="display: none;">
+        <div class="admin-empty-icon"><i class="fas fa-box-open"></i></div>
+        <h3>No orders found</h3>
+        <p>No customer orders match the current filter or search criteria.</p>
+      </div>
+    </section>
+  </main>
+
+  <!-- ==============================================================================
+       MODAL 1: ORDER ITEMS DETAIL DIALOG
+       ============================================================================== -->
+  <div class="admin-modal-backdrop" id="modal-order-items">
+    <div class="admin-modal-box">
+      <div class="admin-modal-header">
+        <div>
+          <h3 id="modal-items-title">Order Items Details</h3>
+          <span style="font-size: 0.82rem; color: var(--admin-text-muted);" id="modal-items-subtitle">Order Reference</span>
+        </div>
+        <button type="button" class="btn-close-adm" onclick="closeOrderItemsModal()">&times;</button>
+      </div>
+
+      <div id="modal-items-body">
+        <!-- Rendered dynamically -->
+      </div>
+    </div>
+  </div>
+
+  <!-- ==============================================================================
+       MODAL 2: SUPABASE CONFIGURATION DIALOG
+       ============================================================================== -->
+  <div class="admin-modal-backdrop" id="modal-config">
+    <div class="admin-modal-box">
+      <div class="admin-modal-header">
+        <div>
+          <h3>Supabase Connection Settings</h3>
+          <span style="font-size: 0.82rem; color: var(--admin-text-muted);">Manage your Supabase Project API Credentials</span>
+        </div>
+        <button type="button" class="btn-close-adm" onclick="closeConfigModal()">&times;</button>
+      </div>
+
+      <form id="config-form" onsubmit="handleSaveConfig(event)">
+        <div class="form-field">
+          <label for="cfg-url">Supabase Project URL</label>
+          <input type="url" id="cfg-url" required placeholder="https://your-project-id.supabase.co">
+          <small style="color: var(--admin-text-muted); font-size: 0.74rem;">Found in Supabase Console &gt; Project Settings &gt; API</small>
+        </div>
+
+        <div class="form-field">
+          <label for="cfg-anon-key">Supabase Anon / Public Key</label>
+          <input type="text" id="cfg-anon-key" required placeholder="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...">
+          <small style="color: var(--admin-text-muted); font-size: 0.74rem;">The public anon key (safe for browser client)</small>
+        </div>
+
+        <div id="cfg-status-message" style="margin-bottom: 16px;"></div>
+
+        <div style="display: flex; gap: 10px; justify-content: flex-end;">
+          <button type="button" class="btn-adm btn-adm-secondary" onclick="handleResetDefaultConfig()">Reset to Code Defaults</button>
+          <button type="submit" class="btn-adm btn-adm-primary"><i class="fas fa-save"></i> Save Credentials</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- ==============================================================================
+       ADMIN DASHBOARD JAVASCRIPT LOGIC
+       ============================================================================== -->
+  <script type="module">
+    import {
+      getActiveCredentials,
+      isSupabaseConfigured,
+      getSupabaseClient,
+      fetchAllOrders,
+      updateOrderStatus,
+      loginAdmin,
+      logoutAdmin,
+      getAdminSession,
+      SUPABASE_CONFIG
+    } from '/js/supabase-client.js';
+
+    // Application State
+    let currentFilterStatus = 'all';
+    let currentSearchTerm = '';
+    let allOrdersData = [];
+    let activeSession = null;
+    let realtimeSubscription = null;
+
+    // Sri Lanka WhatsApp phone normalizer
+    function formatSriLankanWhatsAppNumber(phone) {
+      if (!phone) return '94779882000';
+      const clean = phone.replace(/[^0-9]/g, '');
+      if (clean.startsWith('94')) return clean;
+      if (clean.startsWith('0')) return '94' + clean.slice(1);
+      return '94' + clean;
+    }
+
+    // Initialize Page
+    document.addEventListener('DOMContentLoaded', async () => {
+      updateNavConfigStatus();
+      await checkCurrentAuth();
+    });
+
+    // Check user auth status
+    async function checkCurrentAuth() {
+      try {
+        activeSession = await getAdminSession();
+        if (activeSession && activeSession.user) {
+          showDashboardView(activeSession.user);
+          await loadOrders();
+          setupRealtimeSubscription();
+        } else {
+          showLoginView();
+        }
+      } catch (err) {
+        console.error('Session check failed:', err);
+        showLoginView();
+      }
+    }
+
+    // Switch to Dashboard View
+    function showDashboardView(user) {
+      document.getElementById('admin-login-view').style.display = 'none';
+      document.getElementById('admin-dashboard-view').style.display = 'block';
+      document.getElementById('auth-controls').style.display = 'flex';
+      document.getElementById('admin-user-email').textContent = user.email || 'Admin';
+    }
+
+    // Switch to Login View
+    function showLoginView() {
+      document.getElementById('admin-login-view').style.display = 'flex';
+      document.getElementById('admin-dashboard-view').style.display = 'none';
+      document.getElementById('auth-controls').style.display = 'none';
+      if (realtimeSubscription) {
+        realtimeSubscription.unsubscribe();
+        realtimeSubscription = null;
+      }
+    }
+
+    // Handle Login Submit
+    window.handleLoginSubmit = async function(e) {
+      e.preventDefault();
+      const email = document.getElementById('admin-email').value.trim();
+      const password = document.getElementById('admin-password').value;
+      const btn = document.getElementById('btn-login-submit');
+      const alertBox = document.getElementById('login-alert');
+
+      btn.disabled = true;
+      btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Authenticating...';
+      alertBox.style.display = 'none';
+
+      const res = await loginAdmin(email, password);
+
+      if (res.success) {
+        activeSession = res.session;
+        showDashboardView(res.user);
+        await loadOrders();
+        setupRealtimeSubscription();
+      } else {
+        btn.disabled = false;
+        btn.innerHTML = '<i class="fas fa-sign-in-alt"></i> Sign In to Dashboard';
+        alertBox.className = 'admin-alert admin-alert-error';
+        alertBox.innerHTML = `<i class="fas fa-exclamation-triangle"></i> <div><strong>Login Failed:</strong> ${res.error || 'Invalid email or password.'}</div>`;
+        alertBox.style.display = 'flex';
+      }
+    };
+
+    // Handle Logout
+    window.handleLogout = async function() {
+      await logoutAdmin();
+      activeSession = null;
+      allOrdersData = [];
+      showLoginView();
+    };
+
+    // Fetch and render orders
+    window.loadOrders = async function() {
+      const refreshIcon = document.getElementById('refresh-icon');
+      if (refreshIcon) refreshIcon.classList.add('fa-spin');
+
+      try {
+        const res = await fetchAllOrders();
+        if (res.success) {
+          allOrdersData = res.data || [];
+          renderOrdersTable();
+          updateKPIs();
+        } else {
+          console.warn('Orders fetch note:', res.error);
+          renderOrdersTable();
+        }
+      } catch (err) {
+        console.error('Error fetching orders:', err);
+      } finally {
+        if (refreshIcon) refreshIcon.classList.remove('fa-spin');
+      }
+    };
+
+    // Setup Supabase Realtime Listener
+    function setupRealtimeSubscription() {
+      const client = getSupabaseClient();
+      if (!client || realtimeSubscription) return;
+
+      try {
+        realtimeSubscription = client
+          .channel('public:orders')
+          .on('postgres_changes', { event: '*', schema: 'public', table: 'orders' }, payload => {
+            console.log('Realtime order update:', payload);
+            loadOrders();
+          })
+          .subscribe();
+      } catch (e) {
+        console.warn('Realtime subscription not active:', e);
+      }
+    }
+
+    // Set Filter Status
+    window.setFilterStatus = function(status) {
+      currentFilterStatus = status;
+      document.querySelectorAll('.filter-pill').forEach(btn => {
+        btn.classList.toggle('active', btn.getAttribute('data-status') === status);
+      });
+      renderOrdersTable();
+    };
+
+    // Search input handler
+    window.handleSearchInput = function(e) {
+      currentSearchTerm = (e.target.value || '').toLowerCase().trim();
+      renderOrdersTable();
+    };
+
+    // Render Orders in Table
+    function renderOrdersTable() {
+      const tbody = document.getElementById('orders-tbody');
+      const emptyState = document.getElementById('orders-empty-state');
+      if (!tbody) return;
+
+      // Filter data
+      let filtered = allOrdersData.filter(order => {
+        // Status filter
+        if (currentFilterStatus !== 'all' && order.status !== currentFilterStatus) {
+          return false;
+        }
+
+        // Search filter
+        if (currentSearchTerm) {
+          const matchNumber = (order.order_number || '').toLowerCase().includes(currentSearchTerm);
+          const matchName = (order.customer_name || '').toLowerCase().includes(currentSearchTerm);
+          const matchPhone = (order.customer_phone || '').toLowerCase().includes(currentSearchTerm);
+          const matchDistrict = (order.district || '').toLowerCase().includes(currentSearchTerm);
+          const matchAddress = (order.customer_address || '').toLowerCase().includes(currentSearchTerm);
+          if (!matchNumber && !matchName && !matchPhone && !matchDistrict && !matchAddress) {
+            return false;
+          }
+        }
+        return true;
+      });
+
+      if (filtered.length === 0) {
+        tbody.innerHTML = '';
+        if (emptyState) emptyState.style.display = 'block';
+        return;
+      }
+
+      if (emptyState) emptyState.style.display = 'none';
+
+      tbody.innerHTML = filtered.map(order => {
+        const orderDate = new Date(order.created_at).toLocaleString('en-GB', {
+          day: 'numeric',
+          month: 'short',
+          year: 'numeric',
+          hour: '2-digit',
+          minute: '2-digit'
+        });
+
+        const itemsCount = Array.isArray(order.items) ? order.items.reduce((sum, it) => sum + (it.quantity || 1), 0) : 0;
+        const cleanPhone = formatSriLankanWhatsAppNumber(order.customer_phone);
+
+        // Pre-filled WhatsApp message for customer notification
+        const waMessage = encodeURIComponent(
+          `Hello ${order.customer_name}! 🫧\n\n` +
+          `This is Bubbles Play & Learn Co. Sri Lanka following up on your order ${order.order_number || 'BUB-ORDER'} ` +
+          `(${itemsCount} educational items, Total: LKR ${Number(order.total_amount).toLocaleString()}).\n\n` +
+          `🚚 Current Order Status: *${order.status}*\n` +
+          `📍 Delivery Address: ${order.customer_address} (${order.district})\n\n` +
+          `If you have any questions or need courier tracking details, feel free to reply right here!`
+        );
+
+        const statusClass = getStatusBadgeClass(order.status);
+
+        return `
+          <tr data-order-id="${order.id}">
+            <!-- Order Ref & Date -->
+            <td>
+              <div class="order-ref-stack">
+                <span class="order-ref-no">${order.order_number || 'BUB-' + order.id.slice(0, 6)}</span>
+                <span class="order-timestamp"><i class="far fa-clock"></i> ${orderDate}</span>
+                <span class="order-payment-tag"><i class="fas fa-money-bill-wave"></i> ${order.payment_method ? order.payment_method.toUpperCase() : 'COD'}</span>
+              </div>
+            </td>
+
+            <!-- Customer & Contact -->
+            <td>
+              <div class="customer-info-stack">
+                <span class="customer-name">${escapeHtml(order.customer_name)}</span>
+                <a href="tel:${escapeHtml(order.customer_phone)}" class="customer-phone-link">
+                  <i class="fas fa-phone-alt"></i> ${escapeHtml(order.customer_phone)}
+                </a>
+                ${order.customer_email ? `<span style="font-size:0.75rem; color:var(--admin-text-muted);"><i class="far fa-envelope"></i> ${escapeHtml(order.customer_email)}</span>` : ''}
+              </div>
+            </td>
+
+            <!-- Address & District -->
+            <td>
+              <div class="customer-info-stack">
+                <strong style="font-size: 0.82rem; color: var(--admin-primary);"><i class="fas fa-map-marker-alt"></i> ${escapeHtml(order.district)}</strong>
+                <span class="customer-address-sub">${escapeHtml(order.customer_address)}</span>
+                ${order.delivery_notes ? `<span style="font-size: 0.72rem; color: #D97706; font-style: italic;">Note: ${escapeHtml(order.delivery_notes)}</span>` : ''}
+              </div>
+            </td>
+
+            <!-- Items Summary & Detail Trigger -->
+            <td>
+              <button type="button" class="items-summary-pill" onclick="window.viewOrderItems('${order.id}')" title="Click to view all items and customizations">
+                <i class="fas fa-box"></i> <span>${itemsCount} ${itemsCount === 1 ? 'item' : 'items'}</span>
+                <i class="fas fa-chevron-right" style="font-size:0.7rem; opacity:0.6;"></i>
+              </button>
+            </td>
+
+            <!-- Total Amount -->
+            <td>
+              <div class="order-amount-stack">
+                <span class="order-amount-val">LKR ${Number(order.total_amount).toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 2 })}</span>
+              </div>
+            </td>
+
+            <!-- Status Badge -->
+            <td>
+              <span class="status-badge ${statusClass}">
+                <i class="fas fa-circle" style="font-size: 0.5rem;"></i>
+                ${order.status}
+              </span>
+            </td>
+
+            <!-- Fulfillment Actions -->
+            <td>
+              <div class="order-actions-cell">
+                <select class="status-select" onchange="window.handleStatusChange('${order.id}', this.value)" title="Update fulfillment status">
+                  <option value="Pending" ${order.status === 'Pending' ? 'selected' : ''}>⏳ Pending</option>
+                  <option value="Packed" ${order.status === 'Packed' ? 'selected' : ''}>📦 Packed</option>
+                  <option value="Handed to Courier" ${order.status === 'Handed to Courier' ? 'selected' : ''}>🚚 Handed to Courier</option>
+                  <option value="Delivered" ${order.status === 'Delivered' ? 'selected' : ''}>✅ Delivered</option>
+                  <option value="Cancelled" ${order.status === 'Cancelled' ? 'selected' : ''}>❌ Cancelled</option>
+                </select>
+
+                <a class="btn-adm btn-adm-whatsapp btn-adm-sm" href="https://wa.me/${cleanPhone}?text=${waMessage}" target="_blank" title="Open pre-filled WhatsApp chat with ${escapeHtml(order.customer_name)}">
+                  <i class="fab fa-whatsapp"></i> WhatsApp
+                </a>
+              </div>
+            </td>
+          </tr>
+        `;
+      }).join('');
+    }
+
+    // Helper: Badge CSS class based on status
+    function getStatusBadgeClass(status) {
+      switch (status) {
+        case 'Pending': return 'status-badge-pending';
+        case 'Packed': return 'status-badge-packed';
+        case 'Handed to Courier': return 'status-badge-transit';
+        case 'Delivered': return 'status-badge-delivered';
+        case 'Cancelled': return 'status-badge-cancelled';
+        default: return 'status-badge-pending';
+      }
+    }
+
+    // Update KPI metrics and counts
+    function updateKPIs() {
+      const total = allOrdersData.length;
+      let pending = 0;
+      let transit = 0;
+      let delivered = 0;
+      let cancelled = 0;
+      let revenue = 0;
+
+      allOrdersData.forEach(o => {
+        if (o.status === 'Pending') pending++;
+        else if (o.status === 'Packed' || o.status === 'Handed to Courier') transit++;
+        else if (o.status === 'Delivered') delivered++;
+        else if (o.status === 'Cancelled') cancelled++;
+
+        if (o.status !== 'Cancelled') {
+          revenue += Number(o.total_amount) || 0;
+        }
+      });
+
+      document.getElementById('kpi-total-orders').textContent = total;
+      document.getElementById('kpi-pending-orders').textContent = pending;
+      document.getElementById('kpi-transit-orders').textContent = transit;
+      document.getElementById('kpi-delivered-orders').textContent = delivered;
+      document.getElementById('kpi-total-revenue').textContent = 'LKR ' + revenue.toLocaleString();
+
+      // Counts on filter buttons
+      document.getElementById('count-all').textContent = total;
+      document.getElementById('count-pending').textContent = pending;
+      const packedCount = allOrdersData.filter(o => o.status === 'Packed').length;
+      document.getElementById('count-packed').textContent = packedCount;
+      const courierCount = allOrdersData.filter(o => o.status === 'Handed to Courier').length;
+      document.getElementById('count-courier').textContent = courierCount;
+      document.getElementById('count-delivered').textContent = delivered;
+      document.getElementById('count-cancelled').textContent = cancelled;
+    }
+
+    // Handle Status Change
+    window.handleStatusChange = async function(orderId, newStatus) {
+      // Optimistically update local data
+      const target = allOrdersData.find(o => o.id === orderId);
+      if (target) {
+        const oldStatus = target.status;
+        target.status = newStatus;
+        renderOrdersTable();
+        updateKPIs();
+
+        const res = await updateOrderStatus(orderId, newStatus);
+        if (!res.success) {
+          alert('Failed to update status in Supabase: ' + res.error);
+          target.status = oldStatus;
+          renderOrdersTable();
+          updateKPIs();
+        }
+      }
+    };
+
+    // View Order Items Modal
+    window.viewOrderItems = function(orderId) {
+      const order = allOrdersData.find(o => o.id === orderId);
+      if (!order) return;
+
+      const titleEl = document.getElementById('modal-items-title');
+      const subEl = document.getElementById('modal-items-subtitle');
+      const bodyEl = document.getElementById('modal-items-body');
+
+      titleEl.textContent = `Order ${order.order_number || ''} Items`;
+      subEl.textContent = `Customer: ${order.customer_name} | Total: LKR ${Number(order.total_amount).toLocaleString()}`;
+
+      const items = Array.isArray(order.items) ? order.items : [];
+
+      bodyEl.innerHTML = `
+        <div style="display: flex; flex-direction: column; gap: 12px; margin-top: 12px;">
+          ${items.map(it => `
+            <div style="display: flex; align-items: center; justify-content: space-between; padding: 12px; border-radius: 8px; border: 1px solid var(--admin-border); background-color: #F8FAFC;">
+              <div style="display: flex; align-items: center; gap: 12px;">
+                ${it.imageSrc ? `
+                  <img src="${it.imageSrc.startsWith('/') ? it.imageSrc : '/' + it.imageSrc}" alt="${escapeHtml(it.title)}" style="width: 48px; height: 48px; border-radius: 6px; object-fit: cover; border: 1px solid var(--admin-border);" onerror="this.style.display='none'">
+                ` : '<div style="width:48px;height:48px;border-radius:6px;background:#E2E8F0;display:flex;align-items:center;justify-content:center;color:#64748B;"><i class="fas fa-box"></i></div>'}
+                <div>
+                  <strong style="font-size: 0.9rem; color: var(--admin-text-main);">${escapeHtml(it.title)}</strong>
+                  <div style="font-size: 0.78rem; color: var(--admin-text-muted);">
+                    Quantity: <strong>&times; ${it.quantity || 1}</strong> &bull; Unit Price: LKR ${Number(it.price).toLocaleString()}
+                    ${it.ageLabel ? `&bull; <span class="admin-badge-pill" style="font-size:0.65rem;">${it.ageLabel}</span>` : ''}
+                  </div>
+                  ${it.isCustomBox && it.customData ? `
+                    <div style="margin-top: 4px; font-size: 0.78rem; background: #FFFBEB; border: 1px solid #FDE68A; padding: 4px 8px; border-radius: 4px; color: #92400E;">
+                      ✨ <strong>Custom Box Details:</strong> Child: ${escapeHtml(it.customData.childName || '')} | Age: ${escapeHtml(it.customData.childAge || '')}
+                    </div>
+                  ` : ''}
+                </div>
+              </div>
+              <div style="font-weight: 700; font-size: 0.92rem; color: var(--admin-primary-dark); white-space: nowrap;">
+                LKR ${(Number(it.price) * (it.quantity || 1)).toLocaleString()}
+              </div>
+            </div>
+          `).join('')}
+
+          <div style="margin-top: 14px; padding-top: 12px; border-top: 1px solid var(--admin-border); display: flex; justify-content: space-between; font-weight: 700; font-size: 1rem;">
+            <span>Total Order Value:</span>
+            <span style="color: var(--admin-accent);">LKR ${Number(order.total_amount).toLocaleString()}</span>
+          </div>
+        </div>
+      `;
+
+      document.getElementById('modal-order-items').classList.add('active');
+    };
+
+    window.closeOrderItemsModal = function() {
+      document.getElementById('modal-order-items').classList.remove('active');
+    };
+
+    // Config Modal
+    window.openConfigModal = function() {
+      const creds = getActiveCredentials();
+      document.getElementById('cfg-url').value = creds.url && !creds.url.includes('YOUR_SUPABASE_PROJECT_ID') ? creds.url : '';
+      document.getElementById('cfg-anon-key').value = creds.anonKey && !creds.anonKey.includes('YOUR_SUPABASE_ANON_KEY') ? creds.anonKey : '';
+
+      const statusBox = document.getElementById('cfg-status-message');
+      if (creds.isConfigured) {
+        statusBox.innerHTML = `
+          <div class="admin-alert admin-alert-info">
+            <i class="fas fa-check-circle" style="color: var(--admin-primary);"></i>
+            <div><strong>Supabase Active:</strong> Credentials are configured and ready.</div>
+          </div>
+        `;
+      } else {
+        statusBox.innerHTML = `
+          <div class="admin-alert admin-alert-warning">
+            <i class="fas fa-exclamation-circle"></i>
+            <div><strong>Supabase Inactive:</strong> Replace placeholders or paste your URL & Anon Key below to enable cloud sync.</div>
+          </div>
+        `;
+      }
+
+      document.getElementById('modal-config').classList.add('active');
+    };
+
+    window.closeConfigModal = function() {
+      document.getElementById('modal-config').classList.remove('active');
+    };
+
+    window.handleSaveConfig = function(e) {
+      e.preventDefault();
+      const url = document.getElementById('cfg-url').value.trim();
+      const anonKey = document.getElementById('cfg-anon-key').value.trim();
+
+      if (url && anonKey) {
+        localStorage.setItem('BUBBLES_SUPABASE_URL', url);
+        localStorage.setItem('BUBBLES_SUPABASE_ANON_KEY', anonKey);
+        alert('Supabase credentials saved successfully in this browser! The page will now reload.');
+        location.reload();
+      }
+    };
+
+    window.handleResetDefaultConfig = function() {
+      localStorage.removeItem('BUBBLES_SUPABASE_URL');
+      localStorage.removeItem('BUBBLES_SUPABASE_ANON_KEY');
+      alert('Reset to defaults in js/supabase-client.js. The page will reload.');
+      location.reload();
+    };
+
+    function updateNavConfigStatus() {
+      const isConfig = isSupabaseConfigured();
+      const label = document.getElementById('nav-config-label');
+      if (label) {
+        if (isConfig) {
+          label.innerHTML = '<span class="config-badge-connected"><i class="fas fa-check-circle"></i> Supabase Connected</span>';
+        } else {
+          label.innerHTML = '<span class="config-badge-missing"><i class="fas fa-exclamation-triangle"></i> Configure Supabase</span>';
+        }
+      }
+    }
+
+    function escapeHtml(str) {
+      if (!str) return '';
+      return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
+    }
+  </script>
+</body>
+</html>

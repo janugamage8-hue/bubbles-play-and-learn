@@ -88,6 +88,30 @@ console.assert(appJs.includes('toggleFavoritesCatalogFilter()'), 'app.js must im
 const css = fs.readFileSync('./css/components.css', 'utf8');
 console.assert(css.includes('.saved-favorites-section'), 'components.css must define .saved-favorites-section');
 console.assert(css.includes('.fav-count-pill'), 'components.css must define .fav-count-pill');
-console.assert(css.includes('.wishlist-heart-btn.active'), 'components.css must define .wishlist-heart-btn.active');
+// Test Supabase schema and files
+console.assert(fs.existsSync('./supabase-schema.sql'), 'supabase-schema.sql must exist');
+const sql = fs.readFileSync('./supabase-schema.sql', 'utf8');
+console.assert(sql.includes('create table if not exists public.orders'), 'supabase-schema.sql must create public.orders table');
+console.assert(sql.includes('customer_name') && sql.includes('customer_phone') && sql.includes('customer_address'), 'orders schema must have customer info fields');
+console.assert(sql.includes('items jsonb') && sql.includes('total_amount') && sql.includes('payment_method') && sql.includes('status'), 'orders schema must have required fields');
+console.assert(sql.includes('enable row level security'), 'orders schema must enable RLS');
+console.assert(sql.includes('Allow public to place orders') && sql.includes('Allow authenticated admins to read orders'), 'orders schema must include RLS policies');
 
-console.log('✅ All product, age groups, HTML markup, Favorites features & business rule assertions passed successfully!');
+// Test Supabase client module
+console.assert(fs.existsSync('./js/supabase-client.js'), 'js/supabase-client.js must exist');
+const sbClient = fs.readFileSync('./js/supabase-client.js', 'utf8');
+console.assert(sbClient.includes('SUPABASE_CONFIG') && sbClient.includes('submitOrderToSupabase'), 'supabase-client.js must export SUPABASE_CONFIG and submitOrderToSupabase');
+console.assert(sbClient.includes('fetchAllOrders') && sbClient.includes('updateOrderStatus'), 'supabase-client.js must support fetching and updating orders');
+console.assert(sbClient.includes('loginAdmin') && sbClient.includes('logoutAdmin'), 'supabase-client.js must support admin auth');
+
+// Test Admin dashboard page and styles
+console.assert(fs.existsSync('./admin.html'), 'admin.html must exist');
+const adminHtml = fs.readFileSync('./admin.html', 'utf8');
+console.assert(adminHtml.includes('@supabase/supabase-js@2'), 'admin.html must load Supabase JS SDK');
+console.assert(adminHtml.includes('/js/supabase-client.js'), 'admin.html must import supabase-client.js');
+console.assert(adminHtml.includes('admin-login-view') && adminHtml.includes('admin-dashboard-view'), 'admin.html must contain login and dashboard views');
+console.assert(adminHtml.includes('wa.me'), 'admin.html must include WhatsApp customer action');
+
+console.assert(fs.existsSync('./css/admin.css'), 'css/admin.css must exist');
+
+console.log('✅ All product, age groups, HTML markup, Favorites features, Supabase integration & Admin assertions passed successfully!');

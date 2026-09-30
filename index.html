@@ -22,6 +22,9 @@
   <link rel="stylesheet" href="/css/main.css">
   <link rel="stylesheet" href="/css/components.css">
   <link rel="stylesheet" href="/css/responsive.css">
+
+  <!-- Supabase JS Client CDN -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
 
@@ -622,7 +625,7 @@
     </div>
 
     <div class="container" style="border-top: 1px solid #2D3748; padding-top: 24px; text-align: center; font-size: 0.8rem; color: #64748B;">
-      &copy; 2026 Bubbles Play & Learn (Pvt) Ltd. All rights reserved. Handcrafted with care in Sri Lanka.
+      &copy; 2026 Bubbles Play & Learn (Pvt) Ltd. All rights reserved. Handcrafted with care in Sri Lanka. &bull; <a href="/admin.html" style="color: #94A3B8; text-decoration: underline; margin-left: 6px;"><i class="fas fa-lock"></i> Admin Portal</a>
     </div>
   </footer>
 
@@ -664,6 +667,7 @@
   </a>
 
   <!-- Application Modules -->
+  <script type="module" src="/js/supabase-client.js"></script>
   <script type="module" src="/js/products.js"></script>
   <script type="module" src="/js/cart.js"></script>
   <script type="module" src="/js/box-builder.js"></script>

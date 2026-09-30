@@ -17,7 +17,11 @@ const urls = [
   '/assets/home/kids-magnetic-tiles.jpg',
   '/assets/products/extracted_1_2/img_1.jpg',
   '/assets/products/extracted_2_3/img_1.jpg',
-  '/assets/products/extracted_5_plus/img_1.jpg'
+  '/assets/products/extracted_5_plus/img_1.jpg',
+  '/admin.html',
+  '/css/admin.css',
+  '/js/supabase-client.js',
+  '/supabase-schema.sql'
 ];
 
 async function checkUrl(path) {

@@ -635,35 +635,90 @@ window.togglePaymentDetails = function(method) {
   }
 };
 
-window.handleCheckoutSubmit = function(e) {
+window.handleCheckoutSubmit = async function(e) {
   e.preventDefault();
   const form = e.target;
+  const submitBtn = document.getElementById('btn-place-order');
+  const originalBtnHtml = submitBtn ? submitBtn.innerHTML : '';
+
+  if (submitBtn) {
+    submitBtn.disabled = true;
+    submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Submitting Your Order...';
+  }
+
   const formData = new FormData(form);
 
   const orderData = {
     orderId: 'BUB-' + Math.floor(100000 + Math.random() * 900000),
     orderDate: new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }),
     customer: {
-      fullName: formData.get('fullName'),
-      phone: formData.get('phone'),
-      email: formData.get('email'),
-      address: formData.get('address'),
-      city: formData.get('city'),
-      district: formData.get('district'),
-      deliveryNotes: formData.get('deliveryNotes')
+      fullName: (formData.get('fullName') || '').trim(),
+      phone: (formData.get('phone') || '').trim(),
+      email: (formData.get('email') || '').trim(),
+      address: (formData.get('address') || '').trim(),
+      city: (formData.get('city') || '').trim(),
+      district: (formData.get('district') || '').trim(),
+      deliveryNotes: (formData.get('deliveryNotes') || '').trim()
     },
     paymentMethod: formData.get('paymentMethod'),
     cartState: cartManager.getState()
   };
 
-  // Render Confirmation Modal
-  window.renderOrderSuccessModal(orderData);
+  try {
+    let supabaseResult = null;
+    if (window.bubblesSupabase && typeof window.bubblesSupabase.submitOrderToSupabase === 'function') {
+      supabaseResult = await window.bubblesSupabase.submitOrderToSupabase(orderData);
+    } else {
+      supabaseResult = { success: true, isDemo: true, message: 'Supabase client module not initialized' };
+    }
 
-  // Clear cart after placing order
-  cartManager.clearCart();
+    if (!supabaseResult.success) {
+      // Re-enable button
+      if (submitBtn) {
+        submitBtn.disabled = false;
+        submitBtn.innerHTML = originalBtnHtml;
+      }
+
+      // Friendly fallback alert with option to submit directly via WhatsApp
+      const shouldWhatsApp = confirm(
+        `⚠️ Cloud Order Notice: ${supabaseResult.error || 'Unable to connect to order database'}.\n\n` +
+        `Don't worry! Would you like to confirm and place your order directly via WhatsApp right now?`
+      );
+
+      if (shouldWhatsApp) {
+        const itemsSummary = orderData.cartState.items.map(it => `• ${it.title} x${it.quantity} (LKR ${(it.price * it.quantity).toLocaleString()})`).join('\n');
+        const text = encodeURIComponent(
+          `Hi Bubbles Play & Learn Co.! 🫧\n\n` +
+          `I would like to place an order:\n` +
+          `🧾 Order Ref: ${orderData.orderId}\n` +
+          `👤 Name: ${orderData.customer.fullName}\n` +
+          `📞 Phone: ${orderData.customer.phone}\n` +
+          `📍 Delivery: ${orderData.customer.address}, ${orderData.customer.city}, ${orderData.customer.district}\n\n` +
+          `📦 Items:\n${itemsSummary}\n\n` +
+          `💰 Total: LKR ${orderData.cartState.total.toLocaleString()}\n` +
+          `💳 Payment: ${orderData.paymentMethod.toUpperCase()}`
+        );
+        window.open(`https://wa.me/94779882000?text=${text}`, '_blank');
+        window.closeCheckoutModal();
+        cartManager.clearCart();
+      }
+      return;
+    }
+
+    // Success! Clear cart and display order confirmation modal
+    cartManager.clearCart();
+    window.renderOrderSuccessModal(orderData, supabaseResult);
+  } catch (err) {
+    console.error('Checkout submission error:', err);
+    if (submitBtn) {
+      submitBtn.disabled = false;
+      submitBtn.innerHTML = originalBtnHtml;
+    }
+    alert('An unexpected error occurred while placing your order. Please try again or reach our team directly on WhatsApp: +94 77 988 2000');
+  }
 };
 
-window.renderOrderSuccessModal = function(order) {
+window.renderOrderSuccessModal = function(order, supabaseResult = null) {
   const container = document.getElementById('checkout-modal-container');
   if (!container) return;
 
@@ -673,6 +728,9 @@ window.renderOrderSuccessModal = function(order) {
     'card': 'Credit / Debit Card / Koko'
   };
 
+  const isCloudSaved = supabaseResult && !supabaseResult.isDemo && supabaseResult.success;
+  const isDemo = supabaseResult && supabaseResult.isDemo;
+
   container.innerHTML = `
     <div class="modal-backdrop" onclick="window.closeCheckoutModal()"></div>
     <div class="checkout-modal-dialog order-success-dialog">
@@ -680,6 +738,25 @@ window.renderOrderSuccessModal = function(order) {
         <div class="success-animation-bubble">🎉</div>
         <h2 class="success-title">Thank You, ${order.customer.fullName}!</h2>
         <p class="success-subtitle">Your Bubbles developmental play order has been received successfully.</p>
+
+        ${isCloudSaved ? `
+          <div style="background: #ECFDF5; border: 1px solid #A7F3D0; color: #065F46; padding: 10px 14px; border-radius: 8px; font-size: 0.85rem; margin: 12px 0 16px 0; display: flex; align-items: center; gap: 8px;">
+            <i class="fas fa-check-circle" style="color: #10B981; font-size: 1.1rem;"></i>
+            <div>
+              <strong>Order Confirmed & Saved to Cloud Database!</strong>
+              <div style="font-size: 0.78rem; opacity: 0.9;">Your order is securely registered in our system and ready for processing.</div>
+            </div>
+          </div>
+        ` : ''}
+
+        ${isDemo ? `
+          <div style="background: #FEF3C7; border: 1px solid #FDE68A; color: #92400E; padding: 10px 14px; border-radius: 8px; font-size: 0.82rem; margin: 12px 0 16px 0; display: flex; align-items: center; gap: 8px; text-align: left;">
+            <i class="fas fa-info-circle" style="color: #D97706; font-size: 1.1rem; flex-shrink: 0;"></i>
+            <div>
+              <strong>Order Recorded (Demo Mode):</strong> Connect your Supabase credentials in <code>js/supabase-client.js</code> or the Admin Portal for cloud synchronization.
+            </div>
+          </div>
+        ` : ''}
 
         <div class="order-id-badge">
           <span>Order Reference:</span>
@@ -719,7 +796,7 @@ window.renderOrderSuccessModal = function(order) {
           <div class="shipping-info-preview">
             <p><strong><i class="fas fa-map-marker-alt"></i> Delivery To:</strong> ${order.customer.address}, ${order.customer.city}, ${order.customer.district}</p>
             <p><strong><i class="fas fa-phone-alt"></i> Contact:</strong> ${order.customer.phone} (${order.customer.email})</p>
-            <p><strong><i class="fas fa-money-check-alt"></i> Payment Mode:</strong> ${paymentLabels[order.paymentMethod]}</p>
+            <p><strong><i class="fas fa-money-check-alt"></i> Payment Mode:</strong> ${paymentLabels[order.paymentMethod] || order.paymentMethod}</p>
           </div>
         </div>
 
