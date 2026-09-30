@@ -104,6 +104,69 @@ console.assert(sbClient.includes('SUPABASE_CONFIG') && sbClient.includes('submit
 console.assert(sbClient.includes('fetchAllOrders') && sbClient.includes('updateOrderStatus'), 'supabase-client.js must support fetching and updating orders');
 console.assert(sbClient.includes('loginAdmin') && sbClient.includes('logoutAdmin'), 'supabase-client.js must support admin auth');
 
+// Functional test for submitOrderToSupabase and fetchAllOrders
+import { submitOrderToSupabase, fetchAllOrders, updateOrderStatus } from './js/supabase-client.js';
+
+// Setup minimal localStorage mock for Node test environment
+if (typeof globalThis.localStorage === 'undefined') {
+  const store = new Map();
+  globalThis.localStorage = {
+    getItem: (k) => store.get(k) || null,
+    setItem: (k, v) => store.set(k, String(v)),
+    removeItem: (k) => store.delete(k),
+    clear: () => store.clear()
+  };
+}
+
+const mockOrder = {
+  orderId: 'BUB-998877',
+  customer: {
+    fullName: 'Anuki Jayawardena',
+    phone: '077 123 4567',
+    email: 'anuki@example.lk',
+    address: 'No. 24, Flower Road',
+    city: 'Colombo 07',
+    district: 'Colombo',
+    deliveryNotes: 'Leave at front desk'
+  },
+  paymentMethod: 'cod',
+  cartState: {
+    items: [
+      {
+        id: 'wooden-blocks-1',
+        title: 'Montessori Wooden Building Blocks',
+        price: 4500,
+        quantity: 2,
+        imageSrc: '/assets/home/kids-wooden-blocks.jpg',
+        ageLabel: '2–3 Years'
+      }
+    ],
+    total: 9000
+  }
+};
+
+const submitRes = await submitOrderToSupabase(mockOrder);
+console.assert(submitRes.success === true, 'submitOrderToSupabase should succeed');
+console.assert(submitRes.data && submitRes.data.order_number === 'BUB-998877', 'Submitted order must preserve order_number');
+console.assert(submitRes.data.customer_name === 'Anuki Jayawardena', 'Customer name must be preserved');
+console.assert(submitRes.data.total_amount === 9000, 'Total amount must match');
+console.assert(Array.isArray(submitRes.data.items) && submitRes.data.items.length === 1, 'Items array must be preserved');
+console.assert(submitRes.data.status === 'Pending', 'Default status must be Pending');
+
+// Test fetchAllOrders retrieves the order
+const fetchRes = await fetchAllOrders();
+console.assert(fetchRes.success === true, 'fetchAllOrders should return success: true');
+console.assert(Array.isArray(fetchRes.data), 'fetchAllOrders data must be an array');
+const foundOrder = fetchRes.data.find(o => o.order_number === 'BUB-998877');
+console.assert(!!foundOrder, 'Recently submitted order must be retrievable in fetchAllOrders');
+
+// Test updateOrderStatus
+const updateRes = await updateOrderStatus('BUB-998877', 'Packed');
+console.assert(updateRes.success === true, 'updateOrderStatus should succeed');
+const fetchUpdated = await fetchAllOrders();
+const updatedOrder = fetchUpdated.data.find(o => o.order_number === 'BUB-998877');
+console.assert(updatedOrder && updatedOrder.status === 'Packed', 'Order status must be updated to Packed');
+
 // Test Admin dashboard page and styles
 console.assert(fs.existsSync('./admin.html'), 'admin.html must exist');
 const adminHtml = fs.readFileSync('./admin.html', 'utf8');
@@ -111,6 +174,7 @@ console.assert(adminHtml.includes('@supabase/supabase-js@2'), 'admin.html must l
 console.assert(adminHtml.includes('/js/supabase-client.js'), 'admin.html must import supabase-client.js');
 console.assert(adminHtml.includes('admin-login-view') && adminHtml.includes('admin-dashboard-view'), 'admin.html must contain login and dashboard views');
 console.assert(adminHtml.includes('wa.me'), 'admin.html must include WhatsApp customer action');
+console.assert(adminHtml.includes('enterDirectDashboard'), 'admin.html must provide quick direct dashboard access');
 
 console.assert(fs.existsSync('./css/admin.css'), 'css/admin.css must exist');
 

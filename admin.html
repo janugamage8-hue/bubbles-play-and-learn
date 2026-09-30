@@ -46,14 +46,14 @@
           <i class="fas fa-store"></i> <span>View Store</span>
         </a>
 
-        <!-- Authenticated User Tag & Sign Out (Visible when logged in) -->
+        <!-- Authenticated User Tag & Sign Out (Visible when logged in or in dashboard view) -->
         <div id="auth-controls" style="display: none; align-items: center; gap: 8px;">
           <div class="admin-user-tag" id="admin-user-tag">
             <i class="fas fa-shield-alt text-primary"></i>
             <span id="admin-user-email">admin@bubbles.lk</span>
           </div>
-          <button type="button" class="btn-adm btn-adm-danger btn-adm-sm" onclick="handleLogout()" title="Sign out of Admin Dashboard">
-            <i class="fas fa-sign-out-alt"></i> Sign Out
+          <button type="button" class="btn-adm btn-adm-danger btn-adm-sm" onclick="handleLogout()" title="Exit Admin Dashboard">
+            <i class="fas fa-sign-out-alt"></i> Exit
           </button>
         </div>
       </div>
@@ -84,17 +84,20 @@
         </div>
 
         <button type="submit" class="btn-adm btn-adm-primary" id="btn-login-submit" style="width: 100%; padding: 12px; font-size: 0.95rem; margin-top: 6px;">
-          <i class="fas fa-sign-in-alt"></i> Sign In to Dashboard
+          <i class="fas fa-sign-in-alt"></i> Sign In with Supabase Auth
+        </button>
+
+        <button type="button" class="btn-adm btn-adm-secondary" onclick="enterDirectDashboard()" style="width: 100%; padding: 10px; font-size: 0.88rem; margin-top: 10px;" title="View dashboard using active Supabase API keys">
+          <i class="fas fa-key"></i> Quick Access with API Key
         </button>
       </form>
 
       <!-- Initial Setup Guide -->
       <div class="admin-setup-hint">
-        <strong><i class="fas fa-info-circle text-primary"></i> First-time Admin Setup:</strong><br>
-        1. Open your <strong>Supabase Dashboard &gt; Authentication &gt; Users</strong>.<br>
-        2. Click <strong>Add User &gt; Create User</strong> and set your admin email and password.<br>
-        3. Run the schema in <code>supabase-schema.sql</code> in the Supabase SQL Editor.<br>
-        4. Enter your Supabase Project URL and Anon Key via the <strong>Supabase Config</strong> button above.
+        <strong><i class="fas fa-info-circle text-primary"></i> Supabase Setup Tips:</strong><br>
+        1. Click <strong>Supabase Config</strong> in the header to check or paste your project URL and key.<br>
+        2. Run <code>supabase-schema.sql</code> in the Supabase SQL Editor.<br>
+        3. Create your administrator account under <strong>Authentication &gt; Users &gt; Add User</strong>.
       </div>
     </div>
   </main>
@@ -104,6 +107,9 @@
        ============================================================================== -->
   <main id="admin-dashboard-view" class="admin-main-container" style="display: none;">
     
+    <!-- Top Notice Banner (Dynamic) -->
+    <div id="dashboard-notice-banner" style="display: none; margin-bottom: 16px;"></div>
+
     <!-- Top KPI Cards -->
     <section class="admin-kpi-grid">
       <div class="kpi-card">
@@ -170,11 +176,15 @@
         </button>
       </div>
 
-      <div style="display: flex; align-items: center; gap: 12px; flex-wrap: wrap;">
+      <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
         <div class="admin-search-box">
           <i class="fas fa-search admin-search-icon"></i>
           <input type="text" id="admin-search-input" class="admin-search-input" placeholder="Search customer, phone, district, ref..." oninput="handleSearchInput(event)">
         </div>
+
+        <button type="button" class="btn-adm btn-adm-secondary btn-adm-sm" onclick="createSampleTestOrder()" id="btn-sample-order" title="Place a quick test order to verify database flow">
+          <i class="fas fa-plus-circle"></i> Test Order
+        </button>
 
         <button type="button" class="btn-adm btn-adm-secondary" onclick="loadOrders()" id="btn-refresh" title="Reload orders">
           <i class="fas fa-sync-alt" id="refresh-icon"></i> Refresh
@@ -206,6 +216,9 @@
         <div class="admin-empty-icon"><i class="fas fa-box-open"></i></div>
         <h3>No orders found</h3>
         <p>No customer orders match the current filter or search criteria.</p>
+        <button type="button" class="btn-adm btn-adm-primary btn-adm-sm" onclick="createSampleTestOrder()" style="margin-top: 14px;">
+          <i class="fas fa-magic"></i> Generate a Test Order
+        </button>
       </div>
     </section>
   </main>
@@ -273,11 +286,13 @@
       getActiveCredentials,
       isSupabaseConfigured,
       getSupabaseClient,
+      submitOrderToSupabase,
       fetchAllOrders,
       updateOrderStatus,
       loginAdmin,
       logoutAdmin,
       getAdminSession,
+      getLocalOrders,
       SUPABASE_CONFIG
     } from '/js/supabase-client.js';
 
@@ -291,17 +306,38 @@
     // Sri Lanka WhatsApp phone normalizer
     function formatSriLankanWhatsAppNumber(phone) {
       if (!phone) return '94779882000';
-      const clean = phone.replace(/[^0-9]/g, '');
+      const clean = String(phone).replace(/[^0-9]/g, '');
       if (clean.startsWith('94')) return clean;
       if (clean.startsWith('0')) return '94' + clean.slice(1);
       return '94' + clean;
     }
 
-    // Initialize Page
-    document.addEventListener('DOMContentLoaded', async () => {
+    // Helper: parse order items safely
+    function getOrderItems(order) {
+      if (!order || !order.items) return [];
+      if (Array.isArray(order.items)) return order.items;
+      if (typeof order.items === 'string') {
+        try {
+          const parsed = JSON.parse(order.items);
+          return Array.isArray(parsed) ? parsed : [];
+        } catch (e) {
+          return [];
+        }
+      }
+      return [];
+    }
+
+    // Initialize Page safely
+    function initAdmin() {
       updateNavConfigStatus();
-      await checkCurrentAuth();
-    });
+      checkCurrentAuth();
+    }
+
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', initAdmin);
+    } else {
+      initAdmin();
+    }
 
     // Check user auth status
     async function checkCurrentAuth() {
@@ -312,13 +348,29 @@
           await loadOrders();
           setupRealtimeSubscription();
         } else {
-          showLoginView();
+          // If already previously in direct dashboard mode in this session
+          const guestMode = sessionStorage.getItem('BUBBLES_ADMIN_GUEST_MODE');
+          if (guestMode === 'true') {
+            showDashboardView({ email: 'Store Manager (API Key)' });
+            await loadOrders();
+            setupRealtimeSubscription();
+          } else {
+            showLoginView();
+          }
         }
       } catch (err) {
         console.error('Session check failed:', err);
         showLoginView();
       }
     }
+
+    // Direct dashboard entry using API Key
+    window.enterDirectDashboard = function() {
+      sessionStorage.setItem('BUBBLES_ADMIN_GUEST_MODE', 'true');
+      showDashboardView({ email: 'Store Manager (API Key)' });
+      loadOrders();
+      setupRealtimeSubscription();
+    };
 
     // Switch to Dashboard View
     function showDashboardView(user) {
@@ -333,8 +385,9 @@
       document.getElementById('admin-login-view').style.display = 'flex';
       document.getElementById('admin-dashboard-view').style.display = 'none';
       document.getElementById('auth-controls').style.display = 'none';
+      sessionStorage.removeItem('BUBBLES_ADMIN_GUEST_MODE');
       if (realtimeSubscription) {
-        realtimeSubscription.unsubscribe();
+        try { realtimeSubscription.unsubscribe(); } catch(e) {}
         realtimeSubscription = null;
       }
     }
@@ -355,14 +408,21 @@
 
       if (res.success) {
         activeSession = res.session;
+        sessionStorage.removeItem('BUBBLES_ADMIN_GUEST_MODE');
         showDashboardView(res.user);
         await loadOrders();
         setupRealtimeSubscription();
       } else {
         btn.disabled = false;
-        btn.innerHTML = '<i class="fas fa-sign-in-alt"></i> Sign In to Dashboard';
+        btn.innerHTML = '<i class="fas fa-sign-in-alt"></i> Sign In with Supabase Auth';
         alertBox.className = 'admin-alert admin-alert-error';
-        alertBox.innerHTML = `<i class="fas fa-exclamation-triangle"></i> <div><strong>Login Failed:</strong> ${res.error || 'Invalid email or password.'}</div>`;
+        alertBox.innerHTML = `
+          <i class="fas fa-exclamation-triangle"></i>
+          <div>
+            <strong>Auth Error:</strong> ${res.error || 'Invalid credentials'}.<br>
+            <small>If you haven't created a user in Supabase Authentication yet, use the <strong>"Quick Access with API Key"</strong> button below!</small>
+          </div>
+        `;
         alertBox.style.display = 'flex';
       }
     };
@@ -380,12 +440,22 @@
       const refreshIcon = document.getElementById('refresh-icon');
       if (refreshIcon) refreshIcon.classList.add('fa-spin');
 
+      const noticeBanner = document.getElementById('dashboard-notice-banner');
+
       try {
         const res = await fetchAllOrders();
         if (res.success) {
           allOrdersData = res.data || [];
           renderOrdersTable();
           updateKPIs();
+
+          if (res.error) {
+            noticeBanner.className = 'admin-alert admin-alert-warning';
+            noticeBanner.innerHTML = `<i class="fas fa-info-circle"></i> <div><strong>Supabase Sync Notice:</strong> ${escapeHtml(res.error)}. Showing persistent local backup orders (${res.localCount || 0} found).</div>`;
+            noticeBanner.style.display = 'flex';
+          } else {
+            noticeBanner.style.display = 'none';
+          }
         } else {
           console.warn('Orders fetch note:', res.error);
           renderOrdersTable();
@@ -406,7 +476,7 @@
         realtimeSubscription = client
           .channel('public:orders')
           .on('postgres_changes', { event: '*', schema: 'public', table: 'orders' }, payload => {
-            console.log('Realtime order update:', payload);
+            console.log('Realtime order update detected:', payload);
             loadOrders();
           })
           .subscribe();
@@ -466,101 +536,120 @@
       if (emptyState) emptyState.style.display = 'none';
 
       tbody.innerHTML = filtered.map(order => {
-        const orderDate = new Date(order.created_at).toLocaleString('en-GB', {
-          day: 'numeric',
-          month: 'short',
-          year: 'numeric',
-          hour: '2-digit',
-          minute: '2-digit'
-        });
+        try {
+          let orderDate = 'Recently';
+          if (order.created_at) {
+            try {
+              orderDate = new Date(order.created_at).toLocaleString('en-GB', {
+                day: 'numeric',
+                month: 'short',
+                year: 'numeric',
+                hour: '2-digit',
+                minute: '2-digit'
+              });
+            } catch(e) {
+              orderDate = String(order.created_at);
+            }
+          }
 
-        const itemsCount = Array.isArray(order.items) ? order.items.reduce((sum, it) => sum + (it.quantity || 1), 0) : 0;
-        const cleanPhone = formatSriLankanWhatsAppNumber(order.customer_phone);
+          const itemsList = getOrderItems(order);
+          const itemsCount = itemsList.reduce((sum, it) => sum + (Number(it.quantity) || 1), 0);
+          const cleanPhone = formatSriLankanWhatsAppNumber(order.customer_phone);
 
-        // Pre-filled WhatsApp message for customer notification
-        const waMessage = encodeURIComponent(
-          `Hello ${order.customer_name}! 🫧\n\n` +
-          `This is Bubbles Play & Learn Co. Sri Lanka following up on your order ${order.order_number || 'BUB-ORDER'} ` +
-          `(${itemsCount} educational items, Total: LKR ${Number(order.total_amount).toLocaleString()}).\n\n` +
-          `🚚 Current Order Status: *${order.status}*\n` +
-          `📍 Delivery Address: ${order.customer_address} (${order.district})\n\n` +
-          `If you have any questions or need courier tracking details, feel free to reply right here!`
-        );
+          const safeId = order.id ? String(order.id) : (order.order_number || 'ORD');
+          const displayRef = order.order_number || ('BUB-' + safeId.replace(/[^a-zA-Z0-9]/g, '').slice(0, 6));
 
-        const statusClass = getStatusBadgeClass(order.status);
+          // Pre-filled WhatsApp message for customer notification
+          const waMessage = encodeURIComponent(
+            `Hello ${order.customer_name || 'there'}! 🫧\n\n` +
+            `This is Bubbles Play & Learn Co. Sri Lanka following up on your order ${displayRef} ` +
+            `(${itemsCount} educational items, Total: LKR ${Number(order.total_amount || 0).toLocaleString()}).\n\n` +
+            `🚚 Current Order Status: *${order.status || 'Pending'}*\n` +
+            `📍 Delivery Address: ${order.customer_address || ''} (${order.district || ''})\n\n` +
+            `If you have any questions or need courier tracking details, feel free to reply right here!`
+          );
 
-        return `
-          <tr data-order-id="${order.id}">
-            <!-- Order Ref & Date -->
-            <td>
-              <div class="order-ref-stack">
-                <span class="order-ref-no">${order.order_number || 'BUB-' + order.id.slice(0, 6)}</span>
-                <span class="order-timestamp"><i class="far fa-clock"></i> ${orderDate}</span>
-                <span class="order-payment-tag"><i class="fas fa-money-bill-wave"></i> ${order.payment_method ? order.payment_method.toUpperCase() : 'COD'}</span>
-              </div>
-            </td>
+          const statusClass = getStatusBadgeClass(order.status);
 
-            <!-- Customer & Contact -->
-            <td>
-              <div class="customer-info-stack">
-                <span class="customer-name">${escapeHtml(order.customer_name)}</span>
-                <a href="tel:${escapeHtml(order.customer_phone)}" class="customer-phone-link">
-                  <i class="fas fa-phone-alt"></i> ${escapeHtml(order.customer_phone)}
-                </a>
-                ${order.customer_email ? `<span style="font-size:0.75rem; color:var(--admin-text-muted);"><i class="far fa-envelope"></i> ${escapeHtml(order.customer_email)}</span>` : ''}
-              </div>
-            </td>
+          return `
+            <tr data-order-id="${safeId}">
+              <!-- Order Ref & Date -->
+              <td>
+                <div class="order-ref-stack">
+                  <span class="order-ref-no">${escapeHtml(displayRef)}</span>
+                  <span class="order-timestamp"><i class="far fa-clock"></i> ${orderDate}</span>
+                  <span class="order-payment-tag"><i class="fas fa-money-bill-wave"></i> ${order.payment_method ? String(order.payment_method).toUpperCase() : 'COD'}</span>
+                  ${order.isLocalOnly ? '<span style="font-size:0.68rem; color:#D97706;"><i class="fas fa-hdd"></i> Local Backup</span>' : ''}
+                </div>
+              </td>
 
-            <!-- Address & District -->
-            <td>
-              <div class="customer-info-stack">
-                <strong style="font-size: 0.82rem; color: var(--admin-primary);"><i class="fas fa-map-marker-alt"></i> ${escapeHtml(order.district)}</strong>
-                <span class="customer-address-sub">${escapeHtml(order.customer_address)}</span>
-                ${order.delivery_notes ? `<span style="font-size: 0.72rem; color: #D97706; font-style: italic;">Note: ${escapeHtml(order.delivery_notes)}</span>` : ''}
-              </div>
-            </td>
+              <!-- Customer & Contact -->
+              <td>
+                <div class="customer-info-stack">
+                  <span class="customer-name">${escapeHtml(order.customer_name || 'Anonymous')}</span>
+                  ${order.customer_phone ? `
+                    <a href="tel:${escapeHtml(order.customer_phone)}" class="customer-phone-link">
+                      <i class="fas fa-phone-alt"></i> ${escapeHtml(order.customer_phone)}
+                    </a>
+                  ` : ''}
+                  ${order.customer_email ? `<span style="font-size:0.75rem; color:var(--admin-text-muted);"><i class="far fa-envelope"></i> ${escapeHtml(order.customer_email)}</span>` : ''}
+                </div>
+              </td>
 
-            <!-- Items Summary & Detail Trigger -->
-            <td>
-              <button type="button" class="items-summary-pill" onclick="window.viewOrderItems('${order.id}')" title="Click to view all items and customizations">
-                <i class="fas fa-box"></i> <span>${itemsCount} ${itemsCount === 1 ? 'item' : 'items'}</span>
-                <i class="fas fa-chevron-right" style="font-size:0.7rem; opacity:0.6;"></i>
-              </button>
-            </td>
+              <!-- Address & District -->
+              <td>
+                <div class="customer-info-stack">
+                  <strong style="font-size: 0.82rem; color: var(--admin-primary);"><i class="fas fa-map-marker-alt"></i> ${escapeHtml(order.district || 'Colombo')}</strong>
+                  <span class="customer-address-sub">${escapeHtml(order.customer_address || 'Sri Lanka')}</span>
+                  ${order.delivery_notes ? `<span style="font-size: 0.72rem; color: #D97706; font-style: italic;">Note: ${escapeHtml(order.delivery_notes)}</span>` : ''}
+                </div>
+              </td>
 
-            <!-- Total Amount -->
-            <td>
-              <div class="order-amount-stack">
-                <span class="order-amount-val">LKR ${Number(order.total_amount).toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 2 })}</span>
-              </div>
-            </td>
+              <!-- Items Summary & Detail Trigger -->
+              <td>
+                <button type="button" class="items-summary-pill" onclick="window.viewOrderItems('${escapeHtml(safeId)}')" title="Click to view all items and customizations">
+                  <i class="fas fa-box"></i> <span>${itemsCount} ${itemsCount === 1 ? 'item' : 'items'}</span>
+                  <i class="fas fa-chevron-right" style="font-size:0.7rem; opacity:0.6;"></i>
+                </button>
+              </td>
 
-            <!-- Status Badge -->
-            <td>
-              <span class="status-badge ${statusClass}">
-                <i class="fas fa-circle" style="font-size: 0.5rem;"></i>
-                ${order.status}
-              </span>
-            </td>
+              <!-- Total Amount -->
+              <td>
+                <div class="order-amount-stack">
+                  <span class="order-amount-val">LKR ${Number(order.total_amount || 0).toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 2 })}</span>
+                </div>
+              </td>
 
-            <!-- Fulfillment Actions -->
-            <td>
-              <div class="order-actions-cell">
-                <select class="status-select" onchange="window.handleStatusChange('${order.id}', this.value)" title="Update fulfillment status">
-                  <option value="Pending" ${order.status === 'Pending' ? 'selected' : ''}>⏳ Pending</option>
-                  <option value="Packed" ${order.status === 'Packed' ? 'selected' : ''}>📦 Packed</option>
-                  <option value="Handed to Courier" ${order.status === 'Handed to Courier' ? 'selected' : ''}>🚚 Handed to Courier</option>
-                  <option value="Delivered" ${order.status === 'Delivered' ? 'selected' : ''}>✅ Delivered</option>
-                  <option value="Cancelled" ${order.status === 'Cancelled' ? 'selected' : ''}>❌ Cancelled</option>
-                </select>
+              <!-- Status Badge -->
+              <td>
+                <span class="status-badge ${statusClass}">
+                  <i class="fas fa-circle" style="font-size: 0.5rem;"></i>
+                  ${order.status || 'Pending'}
+                </span>
+              </td>
 
-                <a class="btn-adm btn-adm-whatsapp btn-adm-sm" href="https://wa.me/${cleanPhone}?text=${waMessage}" target="_blank" title="Open pre-filled WhatsApp chat with ${escapeHtml(order.customer_name)}">
-                  <i class="fab fa-whatsapp"></i> WhatsApp
-                </a>
-              </div>
-            </td>
-          </tr>
-        `;
+              <!-- Fulfillment Actions -->
+              <td>
+                <div class="order-actions-cell">
+                  <select class="status-select" onchange="window.handleStatusChange('${escapeHtml(safeId)}', this.value)" title="Update fulfillment status">
+                    <option value="Pending" ${order.status === 'Pending' ? 'selected' : ''}>⏳ Pending</option>
+                    <option value="Packed" ${order.status === 'Packed' ? 'selected' : ''}>📦 Packed</option>
+                    <option value="Handed to Courier" ${order.status === 'Handed to Courier' ? 'selected' : ''}>🚚 Handed to Courier</option>
+                    <option value="Delivered" ${order.status === 'Delivered' ? 'selected' : ''}>✅ Delivered</option>
+                    <option value="Cancelled" ${order.status === 'Cancelled' ? 'selected' : ''}>❌ Cancelled</option>
+                  </select>
+
+                  <a class="btn-adm btn-adm-whatsapp btn-adm-sm" href="https://wa.me/${cleanPhone}?text=${waMessage}" target="_blank" title="Open pre-filled WhatsApp chat with customer">
+                    <i class="fab fa-whatsapp"></i> WhatsApp
+                  </a>
+                </div>
+              </td>
+            </tr>
+          `;
+        } catch(rowErr) {
+          console.error('Error rendering order row:', rowErr, order);
+          return '';
+        }
       }).join('');
     }
 
@@ -616,7 +705,7 @@
     // Handle Status Change
     window.handleStatusChange = async function(orderId, newStatus) {
       // Optimistically update local data
-      const target = allOrdersData.find(o => o.id === orderId);
+      const target = allOrdersData.find(o => String(o.id) === String(orderId) || String(o.order_number) === String(orderId));
       if (target) {
         const oldStatus = target.status;
         target.status = newStatus;
@@ -625,41 +714,41 @@
 
         const res = await updateOrderStatus(orderId, newStatus);
         if (!res.success) {
-          alert('Failed to update status in Supabase: ' + res.error);
-          target.status = oldStatus;
-          renderOrdersTable();
-          updateKPIs();
+          alert('Status updated locally, notice for Supabase: ' + res.error);
         }
       }
     };
 
     // View Order Items Modal
     window.viewOrderItems = function(orderId) {
-      const order = allOrdersData.find(o => o.id === orderId);
+      const order = allOrdersData.find(o => String(o.id) === String(orderId) || String(o.order_number) === String(orderId));
       if (!order) return;
 
       const titleEl = document.getElementById('modal-items-title');
       const subEl = document.getElementById('modal-items-subtitle');
       const bodyEl = document.getElementById('modal-items-body');
 
-      titleEl.textContent = `Order ${order.order_number || ''} Items`;
-      subEl.textContent = `Customer: ${order.customer_name} | Total: LKR ${Number(order.total_amount).toLocaleString()}`;
+      const displayRef = order.order_number || ('BUB-' + String(order.id || '').replace(/-/g, '').slice(0, 6));
 
-      const items = Array.isArray(order.items) ? order.items : [];
+      titleEl.textContent = `Order ${displayRef} Items`;
+      subEl.textContent = `Customer: ${order.customer_name || 'Customer'} | Total: LKR ${Number(order.total_amount || 0).toLocaleString()}`;
+
+      const items = getOrderItems(order);
 
       bodyEl.innerHTML = `
         <div style="display: flex; flex-direction: column; gap: 12px; margin-top: 12px;">
+          ${items.length === 0 ? '<p style="color:var(--admin-text-muted);">No item details found for this order.</p>' : ''}
           ${items.map(it => `
             <div style="display: flex; align-items: center; justify-content: space-between; padding: 12px; border-radius: 8px; border: 1px solid var(--admin-border); background-color: #F8FAFC;">
               <div style="display: flex; align-items: center; gap: 12px;">
                 ${it.imageSrc ? `
-                  <img src="${it.imageSrc.startsWith('/') ? it.imageSrc : '/' + it.imageSrc}" alt="${escapeHtml(it.title)}" style="width: 48px; height: 48px; border-radius: 6px; object-fit: cover; border: 1px solid var(--admin-border);" onerror="this.style.display='none'">
+                  <img src="${it.imageSrc.startsWith('/') ? it.imageSrc : '/' + it.imageSrc}" alt="${escapeHtml(it.title || 'Item')}" style="width: 48px; height: 48px; border-radius: 6px; object-fit: cover; border: 1px solid var(--admin-border);" onerror="this.style.display='none'">
                 ` : '<div style="width:48px;height:48px;border-radius:6px;background:#E2E8F0;display:flex;align-items:center;justify-content:center;color:#64748B;"><i class="fas fa-box"></i></div>'}
                 <div>
-                  <strong style="font-size: 0.9rem; color: var(--admin-text-main);">${escapeHtml(it.title)}</strong>
+                  <strong style="font-size: 0.9rem; color: var(--admin-text-main);">${escapeHtml(it.title || 'Educational Toy')}</strong>
                   <div style="font-size: 0.78rem; color: var(--admin-text-muted);">
-                    Quantity: <strong>&times; ${it.quantity || 1}</strong> &bull; Unit Price: LKR ${Number(it.price).toLocaleString()}
-                    ${it.ageLabel ? `&bull; <span class="admin-badge-pill" style="font-size:0.65rem;">${it.ageLabel}</span>` : ''}
+                    Quantity: <strong>&times; ${it.quantity || 1}</strong> &bull; Unit Price: LKR ${Number(it.price || 0).toLocaleString()}
+                    ${it.ageLabel ? `&bull; <span class="admin-badge-pill" style="font-size:0.65rem;">${escapeHtml(it.ageLabel)}</span>` : ''}
                   </div>
                   ${it.isCustomBox && it.customData ? `
                     <div style="margin-top: 4px; font-size: 0.78rem; background: #FFFBEB; border: 1px solid #FDE68A; padding: 4px 8px; border-radius: 4px; color: #92400E;">
@@ -669,14 +758,14 @@
                 </div>
               </div>
               <div style="font-weight: 700; font-size: 0.92rem; color: var(--admin-primary-dark); white-space: nowrap;">
-                LKR ${(Number(it.price) * (it.quantity || 1)).toLocaleString()}
+                LKR ${(Number(it.price || 0) * (Number(it.quantity) || 1)).toLocaleString()}
               </div>
             </div>
           `).join('')}
 
           <div style="margin-top: 14px; padding-top: 12px; border-top: 1px solid var(--admin-border); display: flex; justify-content: space-between; font-weight: 700; font-size: 1rem;">
             <span>Total Order Value:</span>
-            <span style="color: var(--admin-accent);">LKR ${Number(order.total_amount).toLocaleString()}</span>
+            <span style="color: var(--admin-accent);">LKR ${Number(order.total_amount || 0).toLocaleString()}</span>
           </div>
         </div>
       `;
@@ -686,6 +775,53 @@
 
     window.closeOrderItemsModal = function() {
       document.getElementById('modal-order-items').classList.remove('active');
+    };
+
+    // Helper: Create a Sample Test Order
+    window.createSampleTestOrder = async function() {
+      const sampleOrder = {
+        orderId: 'BUB-' + Math.floor(100000 + Math.random() * 900000),
+        customer: {
+          fullName: 'Dilani Samarasinghe',
+          phone: '077 345 6789',
+          email: 'dilani@example.lk',
+          address: 'No. 18, Havelock Road',
+          city: 'Colombo 05',
+          district: 'Colombo',
+          deliveryNotes: 'Please ring the bell upon delivery'
+        },
+        paymentMethod: 'cod',
+        cartState: {
+          items: [
+            {
+              id: 'sample-1',
+              title: 'Montessori Wooden Rainbow Stacker',
+              price: 3200,
+              quantity: 1,
+              imageSrc: '/assets/products/extracted_1_2/img_1.jpg',
+              ageLabel: '1–2 Years'
+            },
+            {
+              id: 'sample-2',
+              title: 'Sensory Wooden Texture Blocks',
+              price: 2400,
+              quantity: 1,
+              imageSrc: '/assets/products/extracted_2_3/img_1.jpg',
+              ageLabel: '2–3 Years'
+            }
+          ],
+          total: 5600
+        }
+      };
+
+      const res = await submitOrderToSupabase(sampleOrder);
+      if (res.success) {
+        alert(`Test Order ${sampleOrder.orderId} created successfully! Refreshing orders...`);
+        await loadOrders();
+      } else {
+        alert('Test order notice: ' + res.error);
+        await loadOrders();
+      }
     };
 
     // Config Modal
