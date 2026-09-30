@@ -12,10 +12,10 @@
 // ------------------------------------------------------------------------------
 export const SUPABASE_CONFIG = {
   // Replace with your Supabase Project URL (e.g. 'https://xyzabcdef.supabase.co')
-  url: 'https://YOUR_SUPABASE_PROJECT_ID.supabase.co',
+  url: 'https://pneehcnweuvsyjtkvkwp.supabase.co',
 
   // Replace with your Supabase anon/public key (long string starting with eyJhbGci...)
-  anonKey: 'YOUR_SUPABASE_ANON_KEY'
+  anonKey: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBuZWVoY253ZXV2c3lqdGt2a3dwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTA3NDI4NTIsImV4cCI6MjEwNjMxODg1Mn0.Zlfk7A5mKy8MqV5GWtwYcJrLqfTbAl_8LNPDPwPuH-o'
 };
 
 // Check if developer has replaced placeholders or provided dynamic keys in localStorage
