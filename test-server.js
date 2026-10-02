@@ -21,7 +21,9 @@ const urls = [
   '/admin.html',
   '/css/admin.css',
   '/js/supabase-client.js',
-  '/supabase-schema.sql'
+  '/supabase-schema.sql',
+  '/firebaseConfig.js',
+  '/js/firebaseConfig.js'
 ];
 
 async function checkUrl(path) {

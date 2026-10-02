@@ -25,6 +25,16 @@
 
   <!-- Supabase JS Client CDN -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+  <!-- Import Map for Firebase Modular SDK -->
+  <script type="importmap">
+  {
+    "imports": {
+      "firebase/app": "https://www.gstatic.com/firebasejs/10.13.0/firebase-app.js",
+      "firebase/firestore": "https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore.js"
+    }
+  }
+  </script>
 </head>
 <body>
 
@@ -667,6 +677,7 @@
   </a>
 
   <!-- Application Modules -->
+  <script type="module" src="/firebaseConfig.js"></script>
   <script type="module" src="/js/supabase-client.js"></script>
   <script type="module" src="/js/products.js"></script>
   <script type="module" src="/js/cart.js"></script>

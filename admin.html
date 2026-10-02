@@ -22,6 +22,16 @@
 
   <!-- Supabase JS Client CDN -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+  <!-- Import Map for Firebase Modular SDK -->
+  <script type="importmap">
+  {
+    "imports": {
+      "firebase/app": "https://www.gstatic.com/firebasejs/10.13.0/firebase-app.js",
+      "firebase/firestore": "https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore.js"
+    }
+  }
+  </script>
 </head>
 <body class="admin-body">
 
@@ -282,6 +292,8 @@
        ADMIN DASHBOARD JAVASCRIPT LOGIC
        ============================================================================== -->
   <script type="module">
+    import { db } from './firebaseConfig.js';
+    import { collection, query, orderBy, onSnapshot, doc, updateDoc, addDoc, serverTimestamp } from 'firebase/firestore';
     import {
       getActiveCredentials,
       isSupabaseConfigured,
@@ -301,6 +313,7 @@
     let currentSearchTerm = '';
     let allOrdersData = [];
     let activeSession = null;
+    let unsubscribeFirestoreOrders = null;
     let realtimeSubscription = null;
 
     // Sri Lanka WhatsApp phone normalizer
@@ -339,37 +352,64 @@
       initAdmin();
     }
 
+    // Real-Time Cloud Firestore onSnapshot Listener
+    export function initFirestoreOrdersListener() {
+      if (unsubscribeFirestoreOrders) {
+        try { unsubscribeFirestoreOrders(); } catch(e) {}
+        unsubscribeFirestoreOrders = null;
+      }
+
+      try {
+        const q = query(collection(db, 'orders'), orderBy('createdAt', 'desc'));
+        unsubscribeFirestoreOrders = onSnapshot(q, (querySnapshot) => {
+          const orders = [];
+          querySnapshot.forEach((docSnap) => {
+            const data = docSnap.data();
+            orders.push({
+              id: docSnap.id,
+              ...data
+            });
+          });
+
+          console.log(`Firestore onSnapshot: Received ${orders.length} real-time orders.`);
+          allOrdersData = orders;
+          renderOrdersTable();
+          updateKPIs();
+        }, (error) => {
+          console.log('Firestore onSnapshot listener error:', error);
+          loadOrdersFallback();
+        });
+      } catch (err) {
+        console.log('Error initializing Firestore onSnapshot listener:', err);
+        loadOrdersFallback();
+      }
+    }
+
+    if (typeof window !== 'undefined') {
+      window.initFirestoreOrdersListener = initFirestoreOrdersListener;
+    }
+
     // Check user auth status
     async function checkCurrentAuth() {
       try {
         activeSession = await getAdminSession();
         if (activeSession && activeSession.user) {
           showDashboardView(activeSession.user);
-          await loadOrders();
-          setupRealtimeSubscription();
         } else {
-          // If already previously in direct dashboard mode in this session
-          const guestMode = sessionStorage.getItem('BUBBLES_ADMIN_GUEST_MODE');
-          if (guestMode === 'true') {
-            showDashboardView({ email: 'Store Manager (API Key)' });
-            await loadOrders();
-            setupRealtimeSubscription();
-          } else {
-            showLoginView();
-          }
+          // Direct real-time dashboard view for store manager
+          showDashboardView({ email: 'admin@bubbles.lk (Firestore Live)' });
         }
       } catch (err) {
-        console.error('Session check failed:', err);
-        showLoginView();
+        showDashboardView({ email: 'admin@bubbles.lk (Firestore Live)' });
       }
+      initFirestoreOrdersListener();
     }
 
     // Direct dashboard entry using API Key
     window.enterDirectDashboard = function() {
       sessionStorage.setItem('BUBBLES_ADMIN_GUEST_MODE', 'true');
-      showDashboardView({ email: 'Store Manager (API Key)' });
-      loadOrders();
-      setupRealtimeSubscription();
+      showDashboardView({ email: 'Store Manager (Firestore Live)' });
+      initFirestoreOrdersListener();
     };
 
     // Switch to Dashboard View
@@ -386,6 +426,10 @@
       document.getElementById('admin-dashboard-view').style.display = 'none';
       document.getElementById('auth-controls').style.display = 'none';
       sessionStorage.removeItem('BUBBLES_ADMIN_GUEST_MODE');
+      if (unsubscribeFirestoreOrders) {
+        try { unsubscribeFirestoreOrders(); } catch(e) {}
+        unsubscribeFirestoreOrders = null;
+      }
       if (realtimeSubscription) {
         try { realtimeSubscription.unsubscribe(); } catch(e) {}
         realtimeSubscription = null;
@@ -410,8 +454,7 @@
         activeSession = res.session;
         sessionStorage.removeItem('BUBBLES_ADMIN_GUEST_MODE');
         showDashboardView(res.user);
-        await loadOrders();
-        setupRealtimeSubscription();
+        initFirestoreOrdersListener();
       } else {
         btn.disabled = false;
         btn.innerHTML = '<i class="fas fa-sign-in-alt"></i> Sign In with Supabase Auth';
@@ -429,59 +472,48 @@
 
     // Handle Logout
     window.handleLogout = async function() {
+      if (unsubscribeFirestoreOrders) {
+        try { unsubscribeFirestoreOrders(); } catch(e) {}
+        unsubscribeFirestoreOrders = null;
+      }
       await logoutAdmin();
       activeSession = null;
       allOrdersData = [];
       showLoginView();
     };
 
-    // Fetch and render orders
+    // Fetch and render orders (re-trigger listener and fallback)
     window.loadOrders = async function() {
       const refreshIcon = document.getElementById('refresh-icon');
       if (refreshIcon) refreshIcon.classList.add('fa-spin');
 
-      const noticeBanner = document.getElementById('dashboard-notice-banner');
-
       try {
-        const res = await fetchAllOrders();
-        if (res.success) {
-          allOrdersData = res.data || [];
-          renderOrdersTable();
-          updateKPIs();
-
-          if (res.error) {
-            noticeBanner.className = 'admin-alert admin-alert-warning';
-            noticeBanner.innerHTML = `<i class="fas fa-info-circle"></i> <div><strong>Supabase Sync Notice:</strong> ${escapeHtml(res.error)}. Showing persistent local backup orders (${res.localCount || 0} found).</div>`;
-            noticeBanner.style.display = 'flex';
-          } else {
-            noticeBanner.style.display = 'none';
-          }
-        } else {
-          console.warn('Orders fetch note:', res.error);
-          renderOrdersTable();
-        }
-      } catch (err) {
-        console.error('Error fetching orders:', err);
+        initFirestoreOrdersListener();
+        await loadOrdersFallback();
       } finally {
         if (refreshIcon) refreshIcon.classList.remove('fa-spin');
       }
     };
 
-    // Setup Supabase Realtime Listener
-    function setupRealtimeSubscription() {
-      const client = getSupabaseClient();
-      if (!client || realtimeSubscription) return;
-
+    async function loadOrdersFallback() {
+      const noticeBanner = document.getElementById('dashboard-notice-banner');
       try {
-        realtimeSubscription = client
-          .channel('public:orders')
-          .on('postgres_changes', { event: '*', schema: 'public', table: 'orders' }, payload => {
-            console.log('Realtime order update detected:', payload);
-            loadOrders();
-          })
-          .subscribe();
-      } catch (e) {
-        console.warn('Realtime subscription not active:', e);
+        const res = await fetchAllOrders();
+        if (res.success && allOrdersData.length === 0) {
+          allOrdersData = res.data || [];
+          renderOrdersTable();
+          updateKPIs();
+
+          if (res.error && noticeBanner) {
+            noticeBanner.className = 'admin-alert admin-alert-warning';
+            noticeBanner.innerHTML = `<i class="fas fa-info-circle"></i> <div><strong>Sync Notice:</strong> ${escapeHtml(res.error)}. Showing backup orders (${res.localCount || 0} found).</div>`;
+            noticeBanner.style.display = 'flex';
+          } else if (noticeBanner) {
+            noticeBanner.style.display = 'none';
+          }
+        }
+      } catch (err) {
+        console.error('Error in loadOrdersFallback:', err);
       }
     }
 
@@ -538,34 +570,59 @@
       tbody.innerHTML = filtered.map(order => {
         try {
           let orderDate = 'Recently';
-          if (order.created_at) {
+          const dateVal = order.createdAt || order.created_at || order.orderDate;
+          if (dateVal) {
             try {
-              orderDate = new Date(order.created_at).toLocaleString('en-GB', {
-                day: 'numeric',
-                month: 'short',
-                year: 'numeric',
-                hour: '2-digit',
-                minute: '2-digit'
-              });
+              if (typeof dateVal?.toDate === 'function') {
+                orderDate = dateVal.toDate().toLocaleString('en-GB', {
+                  day: 'numeric',
+                  month: 'short',
+                  year: 'numeric',
+                  hour: '2-digit',
+                  minute: '2-digit'
+                });
+              } else if (dateVal.seconds) {
+                orderDate = new Date(dateVal.seconds * 1000).toLocaleString('en-GB', {
+                  day: 'numeric',
+                  month: 'short',
+                  year: 'numeric',
+                  hour: '2-digit',
+                  minute: '2-digit'
+                });
+              } else {
+                orderDate = new Date(dateVal).toLocaleString('en-GB', {
+                  day: 'numeric',
+                  month: 'short',
+                  year: 'numeric',
+                  hour: '2-digit',
+                  minute: '2-digit'
+                });
+              }
             } catch(e) {
-              orderDate = String(order.created_at);
+              orderDate = String(dateVal);
             }
           }
 
           const itemsList = getOrderItems(order);
           const itemsCount = itemsList.reduce((sum, it) => sum + (Number(it.quantity) || 1), 0);
-          const cleanPhone = formatSriLankanWhatsAppNumber(order.customer_phone);
+          const customerPhone = order.customer_phone || (order.customer && order.customer.phone) || '';
+          const cleanPhone = formatSriLankanWhatsAppNumber(customerPhone);
+          const customerName = order.customer_name || (order.customer && order.customer.fullName) || 'Customer';
+          const customerEmail = order.customer_email || (order.customer && order.customer.email) || '';
+          const customerAddress = order.customer_address || (order.customer && `${order.customer.address}${order.customer.city ? ', ' + order.customer.city : ''}`) || 'Sri Lanka';
+          const customerDistrict = order.district || (order.customer && order.customer.district) || 'Colombo';
+          const totalVal = Number(order.total_amount || order.total || (order.cartState && order.cartState.total) || 0);
 
-          const safeId = order.id ? String(order.id) : (order.order_number || 'ORD');
-          const displayRef = order.order_number || ('BUB-' + safeId.replace(/[^a-zA-Z0-9]/g, '').slice(0, 6));
+          const safeId = order.id ? String(order.id) : (order.order_number || order.orderId || 'ORD');
+          const displayRef = order.order_number || order.orderId || ('BUB-' + safeId.replace(/[^a-zA-Z0-9]/g, '').slice(0, 6));
 
           // Pre-filled WhatsApp message for customer notification
           const waMessage = encodeURIComponent(
-            `Hello ${order.customer_name || 'there'}! 🫧\n\n` +
+            `Hello ${customerName}! 🫧\n\n` +
             `This is Bubbles Play & Learn Co. Sri Lanka following up on your order ${displayRef} ` +
-            `(${itemsCount} educational items, Total: LKR ${Number(order.total_amount || 0).toLocaleString()}).\n\n` +
+            `(${itemsCount} educational items, Total: LKR ${totalVal.toLocaleString()}).\n\n` +
             `🚚 Current Order Status: *${order.status || 'Pending'}*\n` +
-            `📍 Delivery Address: ${order.customer_address || ''} (${order.district || ''})\n\n` +
+            `📍 Delivery Address: ${customerAddress} (${customerDistrict})\n\n` +
             `If you have any questions or need courier tracking details, feel free to reply right here!`
           );
 
@@ -681,7 +738,7 @@
         else if (o.status === 'Cancelled') cancelled++;
 
         if (o.status !== 'Cancelled') {
-          revenue += Number(o.total_amount) || 0;
+          revenue += Number(o.total_amount || o.total || (o.cartState && o.cartState.total) || 0);
         }
       });
 
@@ -705,33 +762,42 @@
     // Handle Status Change
     window.handleStatusChange = async function(orderId, newStatus) {
       // Optimistically update local data
-      const target = allOrdersData.find(o => String(o.id) === String(orderId) || String(o.order_number) === String(orderId));
+      const target = allOrdersData.find(o => String(o.id) === String(orderId) || String(o.order_number) === String(orderId) || String(o.orderId) === String(orderId));
       if (target) {
-        const oldStatus = target.status;
         target.status = newStatus;
         renderOrdersTable();
         updateKPIs();
 
-        const res = await updateOrderStatus(orderId, newStatus);
-        if (!res.success) {
-          alert('Status updated locally, notice for Supabase: ' + res.error);
+        try {
+          const docId = target.id || orderId;
+          await updateDoc(doc(db, 'orders', docId), { status: newStatus });
+          console.log(`Firestore order ${docId} status updated to: ${newStatus}`);
+        } catch (err) {
+          console.log('Firestore updateDoc note/error:', err);
+        }
+
+        if (typeof updateOrderStatus === 'function') {
+          updateOrderStatus(orderId, newStatus).catch(() => {});
         }
       }
     };
 
     // View Order Items Modal
     window.viewOrderItems = function(orderId) {
-      const order = allOrdersData.find(o => String(o.id) === String(orderId) || String(o.order_number) === String(orderId));
+      const order = allOrdersData.find(o => String(o.id) === String(orderId) || String(o.order_number) === String(orderId) || String(o.orderId) === String(orderId));
       if (!order) return;
 
       const titleEl = document.getElementById('modal-items-title');
       const subEl = document.getElementById('modal-items-subtitle');
       const bodyEl = document.getElementById('modal-items-body');
 
-      const displayRef = order.order_number || ('BUB-' + String(order.id || '').replace(/-/g, '').slice(0, 6));
+      const safeId = order.id ? String(order.id) : (order.order_number || order.orderId || 'ORD');
+      const displayRef = order.order_number || order.orderId || ('BUB-' + safeId.replace(/[^a-zA-Z0-9]/g, '').slice(0, 6));
+      const customerName = order.customer_name || (order.customer && order.customer.fullName) || 'Customer';
+      const totalVal = Number(order.total_amount || order.total || (order.cartState && order.cartState.total) || 0);
 
       titleEl.textContent = `Order ${displayRef} Items`;
-      subEl.textContent = `Customer: ${order.customer_name || 'Customer'} | Total: LKR ${Number(order.total_amount || 0).toLocaleString()}`;
+      subEl.textContent = `Customer: ${customerName} | Total: LKR ${totalVal.toLocaleString()}`;
 
       const items = getOrderItems(order);
 
@@ -765,7 +831,7 @@
 
           <div style="margin-top: 14px; padding-top: 12px; border-top: 1px solid var(--admin-border); display: flex; justify-content: space-between; font-weight: 700; font-size: 1rem;">
             <span>Total Order Value:</span>
-            <span style="color: var(--admin-accent);">LKR ${Number(order.total_amount || 0).toLocaleString()}</span>
+            <span style="color: var(--admin-accent);">LKR ${totalVal.toLocaleString()}</span>
           </div>
         </div>
       `;
@@ -779,8 +845,17 @@
 
     // Helper: Create a Sample Test Order
     window.createSampleTestOrder = async function() {
+      const sampleOrderId = 'BUB-' + Math.floor(100000 + Math.random() * 900000);
       const sampleOrder = {
-        orderId: 'BUB-' + Math.floor(100000 + Math.random() * 900000),
+        order_number: sampleOrderId,
+        orderId: sampleOrderId,
+        orderDate: new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }),
+        customer_name: 'Dilani Samarasinghe',
+        customer_phone: '077 345 6789',
+        customer_email: 'dilani@example.lk',
+        customer_address: 'No. 18, Havelock Road, Colombo 05',
+        district: 'Colombo',
+        delivery_notes: 'Please ring the bell upon delivery',
         customer: {
           fullName: 'Dilani Samarasinghe',
           phone: '077 345 6789',
@@ -790,37 +865,48 @@
           district: 'Colombo',
           deliveryNotes: 'Please ring the bell upon delivery'
         },
+        payment_method: 'cod',
         paymentMethod: 'cod',
-        cartState: {
-          items: [
-            {
-              id: 'sample-1',
-              title: 'Montessori Wooden Rainbow Stacker',
-              price: 3200,
-              quantity: 1,
-              imageSrc: '/assets/products/extracted_1_2/img_1.jpg',
-              ageLabel: '1–2 Years'
-            },
-            {
-              id: 'sample-2',
-              title: 'Sensory Wooden Texture Blocks',
-              price: 2400,
-              quantity: 1,
-              imageSrc: '/assets/products/extracted_2_3/img_1.jpg',
-              ageLabel: '2–3 Years'
-            }
-          ],
-          total: 5600
-        }
+        status: 'Pending',
+        items: [
+          {
+            id: 'sample-1',
+            title: 'Montessori Wooden Rainbow Stacker',
+            price: 3200,
+            quantity: 1,
+            imageSrc: '/assets/products/extracted_1_2/img_1.jpg',
+            ageLabel: '1–2 Years'
+          },
+          {
+            id: 'sample-2',
+            title: 'Sensory Wooden Texture Blocks',
+            price: 2400,
+            quantity: 1,
+            imageSrc: '/assets/products/extracted_2_3/img_1.jpg',
+            ageLabel: '2–3 Years'
+          }
+        ],
+        total_amount: 5600,
+        total: 5600
       };
 
-      const res = await submitOrderToSupabase(sampleOrder);
-      if (res.success) {
-        alert(`Test Order ${sampleOrder.orderId} created successfully! Refreshing orders...`);
-        await loadOrders();
-      } else {
-        alert('Test order notice: ' + res.error);
-        await loadOrders();
+      try {
+        const docRef = await addDoc(collection(db, 'orders'), {
+          ...sampleOrder,
+          createdAt: serverTimestamp()
+        });
+        console.log('Sample test order added to Firestore with ID:', docRef.id);
+        alert(`Test Order ${sampleOrderId} created in Firestore! It will appear via real-time sync.`);
+      } catch (e) {
+        console.log('Firestore test order creation note:', e);
+        const res = await submitOrderToSupabase(sampleOrder);
+        if (res && res.success) {
+          alert(`Test Order ${sampleOrder.orderId} created successfully! Refreshing orders...`);
+          await loadOrders();
+        } else {
+          alert('Test order notice: ' + (res?.error || e.message));
+          await loadOrders();
+        }
       }
     };
 

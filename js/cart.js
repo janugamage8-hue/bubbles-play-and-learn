@@ -1,4 +1,6 @@
 import { generateToySvg, renderProductMedia, PRODUCTS, getProductById } from './products.js';
+import { db } from './firebaseConfig.js';
+import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
 
 const CART_STORAGE_KEY = 'bubbles_cart_v1';
 const PROMO_CODES = {
@@ -18,11 +20,12 @@ class CartManager {
 
   loadCart() {
     try {
+      if (typeof localStorage === 'undefined') return [];
       const saved = localStorage.getItem(CART_STORAGE_KEY);
       const items = saved ? JSON.parse(saved) : [];
       return items.map(item => {
         if (!item.imageSrc && !item.isCustomBox) {
-          const fullProd = typeof getProductById === 'function' ? getProductById(item.id) : (window.PRODUCTS && window.PRODUCTS.find(p => p.id === item.id));
+          const fullProd = typeof getProductById === 'function' ? getProductById(item.id) : ((typeof window !== 'undefined' && window.PRODUCTS) && window.PRODUCTS.find(p => p.id === item.id));
           if (fullProd && fullProd.imageSrc) {
             item.imageSrc = fullProd.imageSrc;
           }
@@ -39,7 +42,9 @@ class CartManager {
 
   saveCart() {
     try {
-      localStorage.setItem(CART_STORAGE_KEY, JSON.stringify(this.cart));
+      if (typeof localStorage !== 'undefined') {
+        localStorage.setItem(CART_STORAGE_KEY, JSON.stringify(this.cart));
+      }
       this.notify();
     } catch (e) {
       console.error('Failed to save cart to storage', e);
@@ -393,9 +398,10 @@ export function renderCartDrawer() {
 }
 
 // Attach helpers to window for easy inline event triggers
-window.cartManager = cartManager;
+if (typeof window !== 'undefined') {
+  window.cartManager = cartManager;
 
-window.openCartDrawer = function() {
+  window.openCartDrawer = function() {
   const drawer = document.getElementById('cart-drawer');
   if (drawer) {
     drawer.classList.add('active');
@@ -633,9 +639,35 @@ window.togglePaymentDetails = function(method) {
       </div>
     `;
   }
-};
+  };
+}
 
-window.handleCheckoutSubmit = async function(e) {
+/**
+ * Places an order into Cloud Firestore orders collection.
+ * Uses addDoc(collection(db, 'orders'), orderData) with serverTimestamp().
+ * Wrapped in a try...catch block with console.log.
+ * @param {Object} orderData 
+ * @returns {Promise<{success: boolean, id: string, data: Object}>}
+ */
+export async function handlePlaceOrder(orderData) {
+  try {
+    const docData = {
+      ...orderData,
+      createdAt: serverTimestamp()
+    };
+    const docRef = await addDoc(collection(db, 'orders'), docData);
+    console.log('Order successfully placed in Firestore with ID:', docRef.id);
+    return { success: true, id: docRef.id, data: docData };
+  } catch (error) {
+    console.log('Error placing order in Firestore:', error);
+    throw error;
+  }
+}
+
+if (typeof window !== 'undefined') {
+  window.handlePlaceOrder = handlePlaceOrder;
+
+  window.handleCheckoutSubmit = async function(e) {
   e.preventDefault();
   const form = e.target;
   const submitBtn = document.getElementById('btn-place-order');
@@ -648,73 +680,98 @@ window.handleCheckoutSubmit = async function(e) {
 
   const formData = new FormData(form);
 
+  const orderId = 'BUB-' + Math.floor(100000 + Math.random() * 900000);
+  const fullName = (formData.get('fullName') || '').trim();
+  const phone = (formData.get('phone') || '').trim();
+  const email = (formData.get('email') || '').trim();
+  const address = (formData.get('address') || '').trim();
+  const city = (formData.get('city') || '').trim();
+  const district = (formData.get('district') || '').trim();
+  const deliveryNotes = (formData.get('deliveryNotes') || '').trim();
+  const paymentMethod = formData.get('paymentMethod') || 'cod';
+  const cartState = cartManager.getState();
+
+  const formattedItems = cartState.items.map(it => ({
+    id: it.id,
+    title: it.title,
+    price: Number(it.price) || 0,
+    quantity: Number(it.quantity) || 1,
+    isCustomBox: Boolean(it.isCustomBox),
+    customData: it.customData || null,
+    imageSrc: it.imageSrc || null,
+    ageLabel: it.ageLabel || null
+  }));
+
   const orderData = {
-    orderId: 'BUB-' + Math.floor(100000 + Math.random() * 900000),
+    order_number: orderId,
+    orderId: orderId,
     orderDate: new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }),
+    customer_name: fullName,
+    customer_phone: phone,
+    customer_email: email,
+    customer_address: `${address}${city ? ', ' + city : ''}`,
+    district: district,
+    delivery_notes: deliveryNotes,
     customer: {
-      fullName: (formData.get('fullName') || '').trim(),
-      phone: (formData.get('phone') || '').trim(),
-      email: (formData.get('email') || '').trim(),
-      address: (formData.get('address') || '').trim(),
-      city: (formData.get('city') || '').trim(),
-      district: (formData.get('district') || '').trim(),
-      deliveryNotes: (formData.get('deliveryNotes') || '').trim()
+      fullName,
+      phone,
+      email,
+      address,
+      city,
+      district,
+      deliveryNotes
     },
-    paymentMethod: formData.get('paymentMethod'),
-    cartState: cartManager.getState()
+    items: formattedItems,
+    total_amount: Number(cartState.total),
+    total: Number(cartState.total),
+    payment_method: paymentMethod,
+    paymentMethod: paymentMethod,
+    status: 'Pending',
+    cartState: cartState
   };
 
   try {
-    let supabaseResult = null;
+    const result = await handlePlaceOrder(orderData);
+    console.log('Checkout completed successfully with Firestore result:', result);
+
+    // Also persist to local backup & Supabase if available
     if (window.bubblesSupabase && typeof window.bubblesSupabase.submitOrderToSupabase === 'function') {
-      supabaseResult = await window.bubblesSupabase.submitOrderToSupabase(orderData);
-    } else {
-      supabaseResult = { success: true, isDemo: true, message: 'Supabase client module not initialized' };
-    }
-
-    if (!supabaseResult.success) {
-      // Re-enable button
-      if (submitBtn) {
-        submitBtn.disabled = false;
-        submitBtn.innerHTML = originalBtnHtml;
-      }
-
-      // Friendly fallback alert with option to submit directly via WhatsApp
-      const shouldWhatsApp = confirm(
-        `⚠️ Cloud Order Notice: ${supabaseResult.error || 'Unable to connect to order database'}.\n\n` +
-        `Don't worry! Would you like to confirm and place your order directly via WhatsApp right now?`
-      );
-
-      if (shouldWhatsApp) {
-        const itemsSummary = orderData.cartState.items.map(it => `• ${it.title} x${it.quantity} (LKR ${(it.price * it.quantity).toLocaleString()})`).join('\n');
-        const text = encodeURIComponent(
-          `Hi Bubbles Play & Learn Co.! 🫧\n\n` +
-          `I would like to place an order:\n` +
-          `🧾 Order Ref: ${orderData.orderId}\n` +
-          `👤 Name: ${orderData.customer.fullName}\n` +
-          `📞 Phone: ${orderData.customer.phone}\n` +
-          `📍 Delivery: ${orderData.customer.address}, ${orderData.customer.city}, ${orderData.customer.district}\n\n` +
-          `📦 Items:\n${itemsSummary}\n\n` +
-          `💰 Total: LKR ${orderData.cartState.total.toLocaleString()}\n` +
-          `💳 Payment: ${orderData.paymentMethod.toUpperCase()}`
-        );
-        window.open(`https://wa.me/94779882000?text=${text}`, '_blank');
-        window.closeCheckoutModal();
-        cartManager.clearCart();
-      }
-      return;
+      window.bubblesSupabase.submitOrderToSupabase(orderData).catch(err => console.log('Supabase sync note:', err));
     }
 
     // Success! Clear cart and display order confirmation modal
     cartManager.clearCart();
-    window.renderOrderSuccessModal(orderData, supabaseResult);
+    window.renderOrderSuccessModal(orderData, { success: true, id: result.id, isFirestore: true });
   } catch (err) {
-    console.error('Checkout submission error:', err);
+    console.log('Checkout submission error:', err);
     if (submitBtn) {
       submitBtn.disabled = false;
       submitBtn.innerHTML = originalBtnHtml;
     }
-    alert('An unexpected error occurred while placing your order. Please try again or reach our team directly on WhatsApp: +94 77 988 2000');
+
+    // Friendly fallback alert with option to submit directly via WhatsApp
+    const shouldWhatsApp = confirm(
+      `⚠️ Notice: Could not save order directly to Firestore (${err.message || 'connection issue'}).\n\n` +
+      `Would you like to confirm and place your order directly via WhatsApp right now?`
+    );
+
+    if (shouldWhatsApp) {
+      const itemsSummary = orderData.cartState.items.map(it => `• ${it.title} x${it.quantity} (LKR ${(it.price * it.quantity).toLocaleString()})`).join('\n');
+      const text = encodeURIComponent(
+        `Hi Bubbles Play & Learn Co.! 🫧\n\n` +
+        `I would like to place an order:\n` +
+        `🧾 Order Ref: ${orderData.orderId}\n` +
+        `👤 Name: ${orderData.customer.fullName}\n` +
+        `📞 Phone: ${orderData.customer.phone}\n` +
+        `📍 Delivery: ${orderData.customer.address}, ${orderData.customer.city}, ${orderData.customer.district}\n\n` +
+        `📦 Items:\n${itemsSummary}\n\n` +
+        `💰 Total: LKR ${orderData.cartState.total.toLocaleString()}\n` +
+        `💳 Payment: ${orderData.paymentMethod.toUpperCase()}`
+      );
+      window.open(`https://wa.me/94779882000?text=${text}`, '_blank');
+      window.closeCheckoutModal();
+      cartManager.clearCart();
+    }
   }
 };
 
@@ -815,3 +872,4 @@ window.renderOrderSuccessModal = function(order, supabaseResult = null) {
     </div>
   `;
 };
+}

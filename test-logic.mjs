@@ -1,5 +1,23 @@
 // Unit logic test for Bubbles core modules
 
+// Setup minimal browser mocks for Node test environment
+if (typeof globalThis.window === 'undefined') {
+  globalThis.window = globalThis;
+  globalThis.document = {
+    getElementById: () => null,
+    body: { classList: { add: () => {}, remove: () => {} } }
+  };
+}
+if (typeof globalThis.localStorage === 'undefined') {
+  const store = new Map();
+  globalThis.localStorage = {
+    getItem: (k) => store.get(k) || null,
+    setItem: (k, v) => store.set(k, String(v)),
+    removeItem: (k) => store.delete(k),
+    clear: () => store.clear()
+  };
+}
+
 import { PRODUCTS, CURATED_BOXES, CATEGORIES, AGE_RANGES, SHOP_BY_AGE_GROUPS, generateToySvg } from './js/products.js';
 
 // Category separation removed: all products displayed without category division
@@ -178,4 +196,72 @@ console.assert(adminHtml.includes('enterDirectDashboard'), 'admin.html must prov
 
 console.assert(fs.existsSync('./css/admin.css'), 'css/admin.css must exist');
 
-console.log('✅ All product, age groups, HTML markup, Favorites features, Supabase integration & Admin assertions passed successfully!');
+// ==============================================================================
+// 1. Verify Firebase Configuration (firebaseConfig.js)
+// ==============================================================================
+console.assert(fs.existsSync('./firebaseConfig.js'), 'firebaseConfig.js must exist');
+const fbConfigCode = fs.readFileSync('./firebaseConfig.js', 'utf8');
+console.assert(fbConfigCode.includes("from 'firebase/firestore'"), 'firebaseConfig.js must import from firebase/firestore');
+console.assert(fbConfigCode.includes('getFirestore(app)'), 'firebaseConfig.js must initialize Firestore using getFirestore(app)');
+console.assert(fbConfigCode.includes('export const db') || fbConfigCode.includes('export { db }') || fbConfigCode.includes('export default db'), 'firebaseConfig.js must export db');
+
+// Functional test for firebaseConfig import
+import { db as firestoreDb } from './firebaseConfig.js';
+console.assert(!!firestoreDb, 'firebaseConfig.js must successfully export a valid db instance');
+
+// ==============================================================================
+// 2. Verify Checkout Component & handlePlaceOrder (js/cart.js)
+// ==============================================================================
+console.assert(fs.existsSync('./js/cart.js'), 'js/cart.js must exist');
+const cartJsCode = fs.readFileSync('./js/cart.js', 'utf8');
+console.assert(cartJsCode.includes("from './firebaseConfig.js'") || cartJsCode.includes("from '/firebaseConfig.js'"), 'js/cart.js must import db from firebaseConfig.js');
+console.assert(cartJsCode.includes('addDoc') && cartJsCode.includes('collection') && cartJsCode.includes('serverTimestamp'), 'js/cart.js must import addDoc, collection, serverTimestamp');
+console.assert(cartJsCode.includes("collection(db, 'orders')"), "js/cart.js must target collection(db, 'orders')");
+console.assert(cartJsCode.includes('serverTimestamp()'), 'js/cart.js must attach serverTimestamp() to orders');
+console.assert(cartJsCode.includes('try {') && cartJsCode.includes('catch') && cartJsCode.includes('console.log('), 'handlePlaceOrder must wrap execution in try...catch with console.log');
+
+// Functional test for handlePlaceOrder
+import { handlePlaceOrder } from './js/cart.js';
+const testOrderData = {
+  order_number: 'BUB-FIRESTORE-001',
+  orderId: 'BUB-FIRESTORE-001',
+  customer_name: 'Tharushi Perera',
+  customer_phone: '071 999 8888',
+  customer_address: 'No 45, Galle Road, Colombo 03',
+  district: 'Colombo',
+  total_amount: 8500,
+  payment_method: 'cod',
+  items: [
+    { id: 'toy-1', title: 'Montessori Stacking Tower', price: 4250, quantity: 2 }
+  ]
+};
+
+const placeOrderResult = await handlePlaceOrder(testOrderData);
+console.assert(!!placeOrderResult && !!placeOrderResult.id, 'handlePlaceOrder must return a document reference with an id');
+console.log('✅ handlePlaceOrder verified with Firestore doc ID:', placeOrderResult.id);
+
+// ==============================================================================
+// 3. Verify Admin Dashboard onSnapshot Real-time Listener (admin.html)
+// ==============================================================================
+console.assert(adminHtml.includes("from './firebaseConfig.js'") || adminHtml.includes("from '/firebaseConfig.js'"), 'admin.html must import db from firebaseConfig.js');
+console.assert(adminHtml.includes('onSnapshot') && adminHtml.includes('orderBy') && adminHtml.includes('query'), 'admin.html must import onSnapshot, orderBy, query from firebase/firestore');
+console.assert(adminHtml.includes("query(collection(db, 'orders'), orderBy('createdAt', 'desc'))"), 'admin.html must query orders collection ordered by createdAt desc');
+console.assert(adminHtml.includes('onSnapshot('), 'admin.html must maintain a real-time onSnapshot listener');
+
+// Functional test for onSnapshot listener behavior with query ordered by createdAt desc
+import { query, collection, orderBy, onSnapshot } from 'firebase/firestore';
+let receivedSnapshot = false;
+let receivedDocsCount = 0;
+const q = query(collection(firestoreDb, 'orders'), orderBy('createdAt', 'desc'));
+const unsubscribe = onSnapshot(q, (snapshot) => {
+  receivedSnapshot = true;
+  receivedDocsCount = snapshot.size;
+});
+
+// Wait briefly for snapshot event to flush
+await new Promise(r => setTimeout(r, 50));
+console.assert(receivedSnapshot === true, 'onSnapshot listener must trigger upon registration');
+console.assert(receivedDocsCount > 0, 'onSnapshot listener must receive submitted orders');
+unsubscribe();
+
+console.log('✅ All product, age groups, HTML markup, Favorites features, Supabase integration, Admin assertions, and Cloud Firestore assertions passed successfully!');
