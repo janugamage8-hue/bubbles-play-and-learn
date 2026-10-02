@@ -262,6 +262,45 @@ const unsubscribe = onSnapshot(q, (snapshot) => {
 await new Promise(r => setTimeout(r, 50));
 console.assert(receivedSnapshot === true, 'onSnapshot listener must trigger upon registration');
 console.assert(receivedDocsCount > 0, 'onSnapshot listener must receive submitted orders');
-unsubscribe();
+// ==============================================================================
+// 4. Verify Admin Dashboard BUBBLES_ORDERS_HISTORY Fallback & Real-time Sync
+// ==============================================================================
+console.assert(adminHtml.includes('loadLocalStorageOrdersImmediate'), 'admin.html must implement loadLocalStorageOrdersImmediate()');
+console.assert(adminHtml.includes("localStorage.getItem('BUBBLES_ORDERS_HISTORY')"), "admin.html must directly read localStorage.getItem('BUBBLES_ORDERS_HISTORY')");
+console.assert(adminHtml.includes('mergeAndRenderOrders'), 'admin.html must implement mergeAndRenderOrders()');
+console.assert(adminHtml.includes('setupRealtimeSubscription'), 'admin.html must implement setupRealtimeSubscription()');
+console.assert(adminHtml.includes('postgres_changes'), 'admin.html must listen for Supabase postgres_changes');
+console.assert(adminHtml.includes('bubbles:orderPlaced'), 'admin.html must listen for bubbles:orderPlaced event');
+
+// Functional test: verify that orders stored in BUBBLES_ORDERS_HISTORY appear in fetchAllOrders
+const existingHistory = JSON.parse(globalThis.localStorage.getItem('BUBBLES_ORDERS_HISTORY') || '[]');
+const pureLocalOrder = {
+  order_number: 'BUB-LOCAL-TEST-99',
+  customer_name: 'Local Test Customer',
+  customer_phone: '077 123 9999',
+  customer_address: '123 Test Road, Colombo',
+  district: 'Colombo',
+  total_amount: 6500,
+  payment_method: 'cod',
+  status: 'Pending',
+  created_at: new Date().toISOString(),
+  items: [{ id: 'item-1', title: 'Puzzle', price: 6500, quantity: 1 }]
+};
+existingHistory.unshift(pureLocalOrder);
+globalThis.localStorage.setItem('BUBBLES_ORDERS_HISTORY', JSON.stringify(existingHistory));
+
+const historyFetchRes = await fetchAllOrders();
+console.assert(historyFetchRes.success === true, 'fetchAllOrders must succeed');
+
+// Test that pure local order is recovered via fallback
+const foundLocalOrder = historyFetchRes.data.find(o => o.order_number === 'BUB-LOCAL-TEST-99');
+console.assert(!!foundLocalOrder, 'Order BUB-LOCAL-TEST-99 from BUBBLES_ORDERS_HISTORY must be retrievable');
+console.assert(foundLocalOrder.customer_name === 'Local Test Customer', 'Customer details from BUBBLES_ORDERS_HISTORY must be preserved');
+
+// Test that existing order BUB-450199 is present and retrieved
+const foundExistingOrder = historyFetchRes.data.find(o => o.order_number === 'BUB-450199');
+console.assert(!!foundExistingOrder, 'Order BUB-450199 must be present in fetchAllOrders');
+console.log('✅ BUBBLES_ORDERS_HISTORY fallback and retrieval verified for both BUB-LOCAL-TEST-99 and BUB-450199');
 
 console.log('✅ All product, age groups, HTML markup, Favorites features, Supabase integration, Admin assertions, and Cloud Firestore assertions passed successfully!');
+

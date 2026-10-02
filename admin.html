@@ -340,10 +340,146 @@
       return [];
     }
 
+    // ==============================================================================
+    // 💾 LOCAL STORAGE & REAL-TIME SYNCHRONIZATION ENGINE
+    // ==============================================================================
+
+    // Immediate fallback: Directly read and display all orders stored in localStorage.getItem('BUBBLES_ORDERS_HISTORY')
+    function loadLocalStorageOrdersImmediate() {
+      try {
+        const localList = [];
+        const seen = new Set();
+
+        const addFromRaw = (raw) => {
+          if (!raw) return;
+          try {
+            const parsed = JSON.parse(raw);
+            if (Array.isArray(parsed)) {
+              parsed.forEach(o => {
+                if (!o) return;
+                const key = o.order_number || o.orderId || String(o.id || '');
+                if (key && !seen.has(key)) {
+                  seen.add(key);
+                  localList.push({ ...o, isLocalOnly: o.isLocalOnly !== false });
+                }
+              });
+            }
+          } catch (e) {}
+        };
+
+        if (typeof localStorage !== 'undefined') {
+          addFromRaw(localStorage.getItem('BUBBLES_ORDERS_HISTORY'));
+          addFromRaw(localStorage.getItem('BUBBLES_ORDERS'));
+        }
+
+        if (typeof getLocalOrders === 'function') {
+          const fromHelper = getLocalOrders();
+          if (Array.isArray(fromHelper)) {
+            fromHelper.forEach(o => {
+              if (!o) return;
+              const key = o.order_number || o.orderId || String(o.id || '');
+              if (key && !seen.has(key)) {
+                seen.add(key);
+                localList.push(o);
+              }
+            });
+          }
+        }
+
+        if (localList.length > 0) {
+          console.log(`Loaded ${localList.length} orders immediately from localStorage backup.`);
+          mergeAndRenderOrders(localList);
+        }
+      } catch (err) {
+        console.warn('loadLocalStorageOrdersImmediate notice:', err);
+      }
+    }
+
+    // Deduplicate and merge orders from any source (LocalStorage, Supabase, Firestore, Realtime)
+    function mergeAndRenderOrders(incomingList) {
+      if (!incomingList || !Array.isArray(incomingList)) return;
+
+      const map = new Map();
+
+      // 1. Register existing orders in allOrdersData
+      allOrdersData.forEach(o => {
+        if (!o) return;
+        const key = o.order_number || o.orderId || String(o.id || '');
+        if (key) map.set(key, o);
+      });
+
+      // 2. Merge incoming orders
+      incomingList.forEach(incoming => {
+        if (!incoming) return;
+        const incomingNum = incoming.order_number || incoming.orderId;
+        const incomingId = incoming.id ? String(incoming.id) : null;
+
+        // Try finding matching existing record
+        let matchKey = null;
+        for (const [k, ex] of map.entries()) {
+          const exNum = ex.order_number || ex.orderId;
+          const exId = ex.id ? String(ex.id) : null;
+
+          if (incomingNum && exNum && incomingNum === exNum) {
+            matchKey = k;
+            break;
+          }
+          if (incomingId && exId && incomingId === exId) {
+            matchKey = k;
+            break;
+          }
+          if (k === (incomingNum || incomingId)) {
+            matchKey = k;
+            break;
+          }
+        }
+
+        if (matchKey) {
+          const existing = map.get(matchKey);
+          map.set(matchKey, {
+            ...existing,
+            ...incoming,
+            // Retain full items list
+            items: (Array.isArray(incoming.items) && incoming.items.length > 0) ? incoming.items : (existing.items || []),
+            // Keep updated status if available
+            status: incoming.status || existing.status || 'Pending',
+            isLocalOnly: (incoming.isLocalOnly === false || existing.isLocalOnly === false) ? false : (incoming.isLocalOnly ?? existing.isLocalOnly)
+          });
+        } else {
+          const key = incomingNum || incomingId || ('ORD-' + Math.random().toString(36).substr(2, 9));
+          map.set(key, incoming);
+        }
+      });
+
+      // 3. Sort newest first
+      const getDateVal = (o) => {
+        const d = o.createdAt || o.created_at || o.orderDate;
+        if (!d) return 0;
+        if (typeof d?.toMillis === 'function') return d.toMillis();
+        if (typeof d?.toDate === 'function') return d.toDate().getTime();
+        if (d.seconds) return d.seconds * 1000;
+        const parsed = new Date(d).getTime();
+        return isNaN(parsed) ? 0 : parsed;
+      };
+
+      allOrdersData = Array.from(map.values()).sort((a, b) => getDateVal(b) - getDateVal(a));
+      renderOrdersTable();
+      updateKPIs();
+    }
+
     // Initialize Page safely
     function initAdmin() {
       updateNavConfigStatus();
+      // 1. Immediately read and display all orders stored in localStorage fallback
+      loadLocalStorageOrdersImmediate();
+      // 2. Check auth or display store manager view
       checkCurrentAuth();
+      // 3. Fetch from Supabase cloud database
+      window.loadOrders();
+      // 4. Setup Supabase Realtime WebSocket listener
+      setupRealtimeSubscription();
+      // 5. Connect Cloud Firestore real-time listener
+      initFirestoreOrdersListener();
     }
 
     if (document.readyState === 'loading') {
@@ -372,21 +508,51 @@
           });
 
           console.log(`Firestore onSnapshot: Received ${orders.length} real-time orders.`);
-          allOrdersData = orders;
-          renderOrdersTable();
-          updateKPIs();
+          if (orders.length > 0) {
+            mergeAndRenderOrders(orders);
+          }
         }, (error) => {
-          console.log('Firestore onSnapshot listener error:', error);
-          loadOrdersFallback();
+          console.log('Firestore onSnapshot listener notice:', error);
+          window.loadOrders(true);
         });
       } catch (err) {
         console.log('Error initializing Firestore onSnapshot listener:', err);
-        loadOrdersFallback();
+        window.loadOrders(true);
       }
     }
 
     if (typeof window !== 'undefined') {
       window.initFirestoreOrdersListener = initFirestoreOrdersListener;
+    }
+
+    // Real-Time Supabase Subscription
+    function setupRealtimeSubscription() {
+      if (realtimeSubscription) {
+        try { realtimeSubscription.unsubscribe(); } catch(e) {}
+        realtimeSubscription = null;
+      }
+
+      const client = getSupabaseClient();
+      if (!client) return;
+
+      try {
+        const channelName = 'public:orders:admin:' + Date.now();
+        realtimeSubscription = client
+          .channel(channelName)
+          .on('postgres_changes', { event: '*', schema: 'public', table: 'orders' }, (payload) => {
+            console.log('⚡ Supabase Realtime event received:', payload.eventType, payload);
+            if (payload.new) {
+              mergeAndRenderOrders([payload.new]);
+            } else {
+              window.loadOrders(true);
+            }
+          })
+          .subscribe((status) => {
+            console.log('Supabase orders realtime status:', status);
+          });
+      } catch (err) {
+        console.log('Error setting up Supabase realtime subscription:', err);
+      }
     }
 
     // Check user auth status
@@ -397,19 +563,21 @@
           showDashboardView(activeSession.user);
         } else {
           // Direct real-time dashboard view for store manager
-          showDashboardView({ email: 'admin@bubbles.lk (Firestore Live)' });
+          showDashboardView({ email: 'admin@bubbles.lk (Supabase & Firestore Live)' });
         }
       } catch (err) {
-        showDashboardView({ email: 'admin@bubbles.lk (Firestore Live)' });
+        showDashboardView({ email: 'admin@bubbles.lk (Supabase & Firestore Live)' });
       }
-      initFirestoreOrdersListener();
     }
 
     // Direct dashboard entry using API Key
     window.enterDirectDashboard = function() {
       sessionStorage.setItem('BUBBLES_ADMIN_GUEST_MODE', 'true');
-      showDashboardView({ email: 'Store Manager (Firestore Live)' });
+      showDashboardView({ email: 'Store Manager (Supabase & Firestore Live)' });
+      loadLocalStorageOrdersImmediate();
+      window.loadOrders();
       initFirestoreOrdersListener();
+      setupRealtimeSubscription();
     };
 
     // Switch to Dashboard View
@@ -454,7 +622,10 @@
         activeSession = res.session;
         sessionStorage.removeItem('BUBBLES_ADMIN_GUEST_MODE');
         showDashboardView(res.user);
+        loadLocalStorageOrdersImmediate();
+        window.loadOrders();
         initFirestoreOrdersListener();
+        setupRealtimeSubscription();
       } else {
         btn.disabled = false;
         btn.innerHTML = '<i class="fas fa-sign-in-alt"></i> Sign In with Supabase Auth';
@@ -476,45 +647,74 @@
         try { unsubscribeFirestoreOrders(); } catch(e) {}
         unsubscribeFirestoreOrders = null;
       }
+      if (realtimeSubscription) {
+        try { realtimeSubscription.unsubscribe(); } catch(e) {}
+        realtimeSubscription = null;
+      }
       await logoutAdmin();
       activeSession = null;
       allOrdersData = [];
       showLoginView();
     };
 
-    // Fetch and render orders (re-trigger listener and fallback)
-    window.loadOrders = async function() {
+    // Fetch and render orders from Supabase & LocalStorage
+    window.loadOrders = async function(isSilent = false) {
       const refreshIcon = document.getElementById('refresh-icon');
-      if (refreshIcon) refreshIcon.classList.add('fa-spin');
+      if (refreshIcon && !isSilent) refreshIcon.classList.add('fa-spin');
 
       try {
-        initFirestoreOrdersListener();
-        await loadOrdersFallback();
-      } finally {
-        if (refreshIcon) refreshIcon.classList.remove('fa-spin');
-      }
-    };
+        // 1. Immediately read and display orders stored in localStorage fallback
+        loadLocalStorageOrdersImmediate();
 
-    async function loadOrdersFallback() {
-      const noticeBanner = document.getElementById('dashboard-notice-banner');
-      try {
+        // 2. Fetch from Supabase (merges remote & local records)
         const res = await fetchAllOrders();
-        if (res.success && allOrdersData.length === 0) {
-          allOrdersData = res.data || [];
-          renderOrdersTable();
-          updateKPIs();
+        if (res && res.success && Array.isArray(res.data)) {
+          mergeAndRenderOrders(res.data);
 
-          if (res.error && noticeBanner) {
-            noticeBanner.className = 'admin-alert admin-alert-warning';
-            noticeBanner.innerHTML = `<i class="fas fa-info-circle"></i> <div><strong>Sync Notice:</strong> ${escapeHtml(res.error)}. Showing backup orders (${res.localCount || 0} found).</div>`;
-            noticeBanner.style.display = 'flex';
-          } else if (noticeBanner) {
-            noticeBanner.style.display = 'none';
+          const noticeBanner = document.getElementById('dashboard-notice-banner');
+          if (noticeBanner) {
+            if (res.error) {
+              noticeBanner.className = 'admin-alert admin-alert-warning';
+              noticeBanner.innerHTML = `<i class="fas fa-info-circle"></i> <div><strong>Sync Notice:</strong> ${escapeHtml(res.error)}. Displaying backup orders (${allOrdersData.length} total).</div>`;
+              noticeBanner.style.display = 'flex';
+            } else {
+              noticeBanner.style.display = 'none';
+            }
           }
         }
       } catch (err) {
-        console.error('Error in loadOrdersFallback:', err);
+        console.warn('Error in loadOrders:', err);
+      } finally {
+        if (refreshIcon && !isSilent) refreshIcon.classList.remove('fa-spin');
       }
+    };
+
+    // Storage listener for cross-tab or cross-window checkout updates
+    if (typeof window !== 'undefined') {
+      window.addEventListener('storage', (e) => {
+        if (e.key === 'BUBBLES_ORDERS_HISTORY' || e.key === 'BUBBLES_ORDERS') {
+          console.log('Detected storage update for orders, refreshing admin table...');
+          loadLocalStorageOrdersImmediate();
+          window.loadOrders(true);
+        }
+      });
+
+      window.addEventListener('bubbles:orderPlaced', (e) => {
+        console.log('Order placed event caught in Admin:', e.detail);
+        if (e.detail) {
+          mergeAndRenderOrders([e.detail]);
+        }
+        loadLocalStorageOrdersImmediate();
+        window.loadOrders(true);
+      });
+
+      // Periodic background polling (every 7 seconds) so updates from other devices appear immediately
+      setInterval(() => {
+        const dashboardEl = document.getElementById('admin-dashboard-view');
+        if (dashboardEl && dashboardEl.style.display !== 'none') {
+          window.loadOrders(true);
+        }
+      }, 7000);
     }
 
     // Set Filter Status

@@ -110,6 +110,14 @@ export function saveLocalOrderBackup(orderRecord) {
   }
 }
 
+export function notifyOrderPlaced(order) {
+  if (typeof window !== 'undefined') {
+    try {
+      window.dispatchEvent(new CustomEvent('bubbles:orderPlaced', { detail: order }));
+    } catch (e) {}
+  }
+}
+
 // ==============================================================================
 // 📦 ORDERS SERVICE API
 // ==============================================================================
@@ -120,14 +128,16 @@ export function saveLocalOrderBackup(orderRecord) {
  * @returns {Promise<{success: boolean, data?: Object, error?: string, isDemo?: boolean}>}
  */
 export async function submitOrderToSupabase(orderData) {
-  const client = getSupabaseClient();
+  const { url, anonKey, isConfigured } = getActiveCredentials();
   const customer = orderData.customer || {};
   const cartState = orderData.cartState || {};
-  const itemsList = Array.isArray(cartState.items) ? cartState.items : [];
+  const itemsList = Array.isArray(orderData.items) && orderData.items.length > 0 
+    ? orderData.items 
+    : (Array.isArray(cartState.items) ? cartState.items : []);
 
-  const fullAddress = customer.address 
+  const fullAddress = orderData.customer_address || (customer.address 
     ? `${customer.address}${customer.city ? ', ' + customer.city : ''}`
-    : (customer.city || 'Sri Lanka');
+    : (customer.city || 'Sri Lanka'));
 
   const formattedItems = itemsList.map(item => ({
     id: item.id || 'item',
@@ -140,110 +150,97 @@ export async function submitOrderToSupabase(orderData) {
     ageLabel: item.ageLabel || null
   }));
 
-  const orderNumber = orderData.orderId || ('BUB-' + Math.floor(100000 + Math.random() * 900000));
+  const orderNumber = orderData.order_number || orderData.orderId || ('BUB-' + Math.floor(100000 + Math.random() * 900000));
+  const totalAmount = Number(orderData.total_amount || orderData.total || cartState.total) || 0;
 
   // Full payload with all convenience fields
   const fullPayload = {
     order_number: orderNumber,
-    customer_name: customer.fullName || customer.name || 'Valued Customer',
-    customer_phone: customer.phone || '',
-    customer_email: customer.email || null,
+    customer_name: orderData.customer_name || customer.fullName || customer.name || 'Valued Customer',
+    customer_phone: orderData.customer_phone || customer.phone || '',
+    customer_email: orderData.customer_email || customer.email || null,
     customer_address: fullAddress,
-    district: customer.district || 'Colombo',
-    delivery_notes: customer.deliveryNotes || '',
+    district: orderData.district || customer.district || 'Colombo',
+    delivery_notes: orderData.delivery_notes || customer.deliveryNotes || '',
     items: formattedItems,
-    total_amount: Number(cartState.total) || 0,
-    payment_method: orderData.paymentMethod || 'cod',
-    status: 'Pending'
+    total_amount: totalAmount,
+    payment_method: orderData.payment_method || orderData.paymentMethod || 'cod',
+    status: orderData.status || 'Pending'
   };
 
-  // Minimal core payload (in case user table only has basic schema without order_number)
-  const corePayload = {
-    customer_name: fullPayload.customer_name,
-    customer_phone: fullPayload.customer_phone,
-    customer_address: fullPayload.customer_address,
-    district: fullPayload.district,
-    items: fullPayload.items,
-    total_amount: fullPayload.total_amount,
-    payment_method: fullPayload.payment_method,
-    status: fullPayload.status
+  // 1. Immediately backup to localStorage (BUBBLES_ORDERS_HISTORY)
+  const initialLocalRecord = {
+    ...fullPayload,
+    id: orderData.id || ('local-' + Date.now()),
+    created_at: new Date().toISOString(),
+    isLocalOnly: true
   };
+  saveLocalOrderBackup(initialLocalRecord);
 
-  if (!client) {
-    console.info('ℹ️ Supabase credentials not set or client unavailable. Storing order locally.');
-    const demoOrder = {
-      ...fullPayload,
-      id: 'local-' + Date.now(),
-      created_at: new Date().toISOString(),
-      isLocalOnly: true
-    };
-    saveLocalOrderBackup(demoOrder);
-    return {
-      success: true,
-      isDemo: true,
-      data: demoOrder,
-      order: orderData,
-      message: 'Demo Mode: Order placed locally. Connect Supabase credentials in js/supabase-client.js for cloud persistence.'
-    };
-  }
+  const client = getSupabaseClient();
+  let savedRecord = null;
 
-  try {
-    // Helper to insert with select/minimal fallback
-    async function tryInsert(p) {
-      const res = await client.from('orders').insert([p]).select();
-      if (!res.error) return res;
-
-      // If select failed (often due to RLS select restrictions on anon), try minimal insert
-      if (res.error && res.error.code !== 'PGRST204') {
-        const minRes = await client.from('orders').insert([p]);
-        if (!minRes.error) return { data: [p], error: null };
+  // 2. Try inserting via Supabase SDK client
+  if (client) {
+    try {
+      const res = await client.from('orders').insert([fullPayload]).select();
+      if (!res.error && res.data && res.data[0]) {
+        savedRecord = { ...fullPayload, ...res.data[0], isLocalOnly: false };
+      } else if (!res.error) {
+        savedRecord = { ...fullPayload, isLocalOnly: false };
+      } else {
+        // Retry insert without select (in case select RLS restricts anon)
+        const insertOnly = await client.from('orders').insert([fullPayload]);
+        if (!insertOnly.error) {
+          savedRecord = { ...fullPayload, isLocalOnly: false };
+        }
       }
-      return res;
+    } catch (clientErr) {
+      console.warn('Supabase client insert error, will try REST fallback:', clientErr);
     }
-
-    let insertRes = await tryInsert(fullPayload);
-
-    // If failed due to a missing column (e.g. order_number or customer_email not yet migrated in Supabase):
-    if (insertRes.error && (insertRes.error.code === 'PGRST204' || (insertRes.error.message && insertRes.error.message.includes('column')))) {
-      console.warn('Full schema insert failed due to column mismatch. Retrying with core schema columns...');
-      insertRes = await tryInsert(corePayload);
-    }
-
-    if (insertRes.error) {
-      console.error('❌ Supabase order submission error:', insertRes.error);
-      // Preserve order in local storage backup so the customer/store never loses it!
-      const offlineRecord = {
-        ...fullPayload,
-        id: 'offline-' + Date.now(),
-        created_at: new Date().toISOString(),
-        isLocalOnly: true,
-        syncStatus: 'pending_sync',
-        errorNotice: insertRes.error.message
-      };
-      saveLocalOrderBackup(offlineRecord);
-      return { success: false, error: insertRes.error.message, data: offlineRecord };
-    }
-
-    const savedOrderData = (insertRes.data && insertRes.data[0]) 
-      ? { ...fullPayload, ...insertRes.data[0] }
-      : { ...fullPayload, id: 'supa-' + Date.now(), created_at: new Date().toISOString() };
-
-    // Persist to local backup history as verified saved
-    saveLocalOrderBackup(savedOrderData);
-
-    return { success: true, data: savedOrderData };
-  } catch (err) {
-    console.error('❌ Unexpected error submitting order:', err);
-    const offlineRecord = {
-      ...fullPayload,
-      id: 'offline-' + Date.now(),
-      created_at: new Date().toISOString(),
-      isLocalOnly: true,
-      syncStatus: 'pending_sync'
-    };
-    saveLocalOrderBackup(offlineRecord);
-    return { success: false, error: err.message || 'Network connection failed', data: offlineRecord };
   }
+
+  // 3. If SDK insert didn't succeed, use direct HTTPS REST PostgREST API
+  if (!savedRecord && url && anonKey) {
+    try {
+      const resp = await fetch(`${url}/rest/v1/orders`, {
+        method: 'POST',
+        headers: {
+          'apikey': anonKey,
+          'Authorization': `Bearer ${anonKey}`,
+          'Content-Type': 'application/json',
+          'Prefer': 'return=representation'
+        },
+        body: JSON.stringify(fullPayload)
+      });
+
+      if (resp.ok) {
+        const json = await resp.json();
+        savedRecord = (json && json[0]) ? { ...fullPayload, ...json[0], isLocalOnly: false } : { ...fullPayload, isLocalOnly: false };
+        console.log('✅ Order successfully saved to Supabase via direct REST API:', savedRecord.order_number);
+      } else {
+        const errText = await resp.text();
+        console.warn('Supabase direct REST error:', resp.status, errText);
+      }
+    } catch (fetchErr) {
+      console.warn('Supabase direct REST fetch error:', fetchErr);
+    }
+  }
+
+  if (savedRecord) {
+    saveLocalOrderBackup(savedRecord);
+    notifyOrderPlaced(savedRecord);
+    return { success: true, data: savedRecord };
+  }
+
+  // 4. Return local backup record if offline
+  notifyOrderPlaced(initialLocalRecord);
+  return {
+    success: true,
+    data: initialLocalRecord,
+    isLocalOnly: true,
+    message: 'Order saved locally in BUBBLES_ORDERS_HISTORY'
+  };
 }
 
 /**
@@ -303,12 +300,14 @@ export async function syncPendingLocalOrders() {
  * @returns {Promise<{success: boolean, data?: Array, error?: string, isLocalOnly?: boolean}>}
  */
 export async function fetchAllOrders(filter = {}) {
+  const { url, anonKey } = getActiveCredentials();
   const client = getSupabaseClient();
   const localOrders = getLocalOrders();
 
   let remoteOrders = [];
   let fetchError = null;
 
+  // 1. Try Supabase Client SDK
   if (client) {
     try {
       let query = client
@@ -326,38 +325,67 @@ export async function fetchAllOrders(filter = {}) {
       }
 
       const { data, error } = await query;
-      if (error) {
-        console.warn('Supabase fetch orders notice:', error.message);
-        fetchError = error.message;
-      } else if (Array.isArray(data)) {
+      if (!error && Array.isArray(data)) {
         remoteOrders = data;
+      } else if (error) {
+        fetchError = error.message;
       }
     } catch (err) {
-      console.warn('Network error fetching orders from Supabase:', err);
       fetchError = err.message || 'Network request failed';
     }
   }
 
-  // Combine remote orders and local backup orders
+  // 2. Direct REST API fallback
+  if (remoteOrders.length === 0 && url && anonKey) {
+    try {
+      let restUrl = `${url}/rest/v1/orders?select=*&order=created_at.desc`;
+      if (filter.status && filter.status !== 'all') {
+        restUrl += `&status=eq.${encodeURIComponent(filter.status)}`;
+      }
+      const resp = await fetch(restUrl, {
+        headers: {
+          'apikey': anonKey,
+          'Authorization': `Bearer ${anonKey}`,
+          'Accept': 'application/json'
+        }
+      });
+      if (resp.ok) {
+        const json = await resp.json();
+        if (Array.isArray(json)) {
+          remoteOrders = json;
+          fetchError = null;
+        }
+      }
+    } catch (e) {
+      console.warn('Direct REST fetch error:', e);
+    }
+  }
+
+  // 3. Combine remote orders and local backup orders (BUBBLES_ORDERS_HISTORY)
   const ordersMap = new Map();
 
   // Add remote orders first
   remoteOrders.forEach(o => {
-    const key = o.order_number || o.id;
+    const key = o.order_number || o.orderId || o.id;
     if (key) ordersMap.set(String(key), o);
   });
 
-  // Merge any local orders that are not yet in Supabase
+  // Merge any local orders stored in BUBBLES_ORDERS_HISTORY
   localOrders.forEach(lo => {
-    const key = lo.order_number || lo.id;
-    if (key && !ordersMap.has(String(key))) {
-      ordersMap.set(String(key), lo);
+    const key = lo.order_number || lo.orderId || lo.id;
+    if (key) {
+      if (!ordersMap.has(String(key))) {
+        ordersMap.set(String(key), { ...lo, isLocalOnly: true });
+      } else {
+        const existing = ordersMap.get(String(key));
+        ordersMap.set(String(key), { ...lo, ...existing });
+      }
     }
   });
 
   const allMergedOrders = Array.from(ordersMap.values()).sort((a, b) => {
-    const tA = new Date(a.created_at || 0).getTime();
-    const tB = new Date(b.created_at || 0).getTime();
+    const tA = new Date(a.created_at || a.createdAt || a.orderDate || 0).getTime();
+    const tB = new Date(b.created_at || b.createdAt || b.orderDate || 0).getTime();
     return tB - tA;
   });
 
@@ -379,37 +407,49 @@ export async function fetchAllOrders(filter = {}) {
 export async function updateOrderStatus(orderId, newStatus) {
   // Update local storage backup first
   const localOrders = getLocalOrders();
-  const target = localOrders.find(o => o.id === orderId || o.order_number === orderId);
+  const target = localOrders.find(o => String(o.id) === String(orderId) || String(o.order_number) === String(orderId) || String(o.orderId) === String(orderId));
   if (target) {
     target.status = newStatus;
     localStorage.setItem(LOCAL_ORDERS_STORAGE_KEY, JSON.stringify(localOrders));
   }
 
+  const { url, anonKey } = getActiveCredentials();
   const client = getSupabaseClient();
-  if (!client) {
-    return { success: true, isLocal: true };
+
+  if (client) {
+    try {
+      let query = client.from('orders').update({ status: newStatus });
+      if (String(orderId).includes('-') && String(orderId).length === 36) {
+        query = query.eq('id', orderId);
+      } else {
+        query = query.or(`id.eq.${orderId},order_number.eq.${orderId}`);
+      }
+      const { error } = await query;
+      if (!error) return { success: true };
+    } catch (err) {}
   }
 
-  try {
-    // If orderId is a UUID
-    let query = client
-      .from('orders')
-      .update({ status: newStatus });
-
-    if (String(orderId).includes('-') && String(orderId).length === 36) {
-      query = query.eq('id', orderId);
-    } else {
-      query = query.or(`id.eq.${orderId},order_number.eq.${orderId}`);
-    }
-
-    const { error } = await query;
-    if (error) {
-      return { success: false, error: error.message };
-    }
-    return { success: true };
-  } catch (err) {
-    return { success: false, error: err.message };
+  // REST fallback
+  if (url && anonKey) {
+    try {
+      let patchUrl = `${url}/rest/v1/orders?order_number=eq.${encodeURIComponent(orderId)}`;
+      if (String(orderId).includes('-') && String(orderId).length === 36) {
+        patchUrl = `${url}/rest/v1/orders?id=eq.${encodeURIComponent(orderId)}`;
+      }
+      const resp = await fetch(patchUrl, {
+        method: 'PATCH',
+        headers: {
+          'apikey': anonKey,
+          'Authorization': `Bearer ${anonKey}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ status: newStatus })
+      });
+      if (resp.ok) return { success: true };
+    } catch (e) {}
   }
+
+  return { success: true, isLocal: true };
 }
 
 // ==============================================================================

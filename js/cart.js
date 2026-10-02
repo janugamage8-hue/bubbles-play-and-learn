@@ -1,6 +1,7 @@
 import { generateToySvg, renderProductMedia, PRODUCTS, getProductById } from './products.js';
 import { db } from './firebaseConfig.js';
 import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
+import { submitOrderToSupabase, saveLocalOrderBackup } from './supabase-client.js';
 
 const CART_STORAGE_KEY = 'bubbles_cart_v1';
 const PROMO_CODES = {
@@ -731,17 +732,31 @@ if (typeof window !== 'undefined') {
   };
 
   try {
-    const result = await handlePlaceOrder(orderData);
-    console.log('Checkout completed successfully with Firestore result:', result);
+    // 1. Immediately save to localStorage BUBBLES_ORDERS_HISTORY fallback
+    saveLocalOrderBackup(orderData);
 
-    // Also persist to local backup & Supabase if available
-    if (window.bubblesSupabase && typeof window.bubblesSupabase.submitOrderToSupabase === 'function') {
-      window.bubblesSupabase.submitOrderToSupabase(orderData).catch(err => console.log('Supabase sync note:', err));
+    // 2. Insert order into Supabase cloud orders table
+    const supaResult = await submitOrderToSupabase(orderData);
+    console.log('Order submitted to Supabase successfully:', supaResult);
+
+    // 3. Also record in Firestore if available
+    let firestoreResult = null;
+    try {
+      firestoreResult = await handlePlaceOrder(orderData);
+    } catch (fireErr) {
+      console.log('Firestore notice:', fireErr);
     }
 
     // Success! Clear cart and display order confirmation modal
     cartManager.clearCart();
-    window.renderOrderSuccessModal(orderData, { success: true, id: result.id, isFirestore: true });
+    window.renderOrderSuccessModal(orderData, supaResult);
+
+    // Trigger local order event so Admin Dashboard in this or another tab updates immediately
+    if (typeof window !== 'undefined') {
+      try {
+        window.dispatchEvent(new CustomEvent('bubbles:orderPlaced', { detail: orderData }));
+      } catch (e) {}
+    }
   } catch (err) {
     console.log('Checkout submission error:', err);
     if (submitBtn) {
