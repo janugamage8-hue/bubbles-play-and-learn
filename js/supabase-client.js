@@ -18,13 +18,20 @@ export const SUPABASE_CONFIG = {
   anonKey: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBuZWVoY253ZXV2c3lqdGt2a3dwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTA3NDI4NTIsImV4cCI6MjEwNjMxODg1Mn0.Zlfk7A5mKy8MqV5GWtwYcJrLqfTbAl_8LNPDPwPuH-o'
 };
 
-// Check if developer has replaced placeholders or provided dynamic keys in localStorage
+// Check if developer has replaced placeholders or provided dynamic keys in localStorage / env
 export function getActiveCredentials() {
+  const envUrl = (typeof import.meta !== 'undefined' && import.meta.env && import.meta.env.VITE_SUPABASE_URL) 
+    ? import.meta.env.VITE_SUPABASE_URL 
+    : null;
+  const envKey = (typeof import.meta !== 'undefined' && import.meta.env && import.meta.env.VITE_SUPABASE_ANON_KEY) 
+    ? import.meta.env.VITE_SUPABASE_ANON_KEY 
+    : null;
+
   const localUrl = typeof localStorage !== 'undefined' ? localStorage.getItem('BUBBLES_SUPABASE_URL') : null;
   const localKey = typeof localStorage !== 'undefined' ? localStorage.getItem('BUBBLES_SUPABASE_ANON_KEY') : null;
 
-  const url = (localUrl && localUrl.trim()) || SUPABASE_CONFIG.url;
-  const anonKey = (localKey && localKey.trim()) || SUPABASE_CONFIG.anonKey;
+  const url = envUrl || (localUrl && localUrl.trim()) || SUPABASE_CONFIG.url;
+  const anonKey = envKey || (localKey && localKey.trim()) || SUPABASE_CONFIG.anonKey;
 
   const isConfigured = 
     Boolean(url) && 

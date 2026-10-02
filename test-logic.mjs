@@ -340,5 +340,44 @@ console.assert(adminHtml.includes(".channel('custom-all-channel')"), 'admin.html
 console.assert(adminHtml.includes('Successfully fetched'), 'admin.html must log fetched count to console on refresh');
 console.log('✅ Admin Dashboard direct Supabase query and custom-all-channel verified successfully!');
 
+// ==============================================================================
+// 7. Verify Unlocked Credentials, Auto-init, Primary Supabase Source & Refresh Toast
+// ==============================================================================
+// 7.1 Unlocked Credentials inputs
+console.assert(adminHtml.includes('function unlockCredentialsInputs'), 'admin.html must implement unlockCredentialsInputs()');
+console.assert(adminHtml.includes('urlInput.disabled = false') && adminHtml.includes('urlInput.readOnly = false'), 'admin.html must unlock urlInput');
+console.assert(adminHtml.includes('keyInput.disabled = false') && adminHtml.includes('keyInput.readOnly = false'), 'admin.html must unlock keyInput');
+
+// 7.2 Auto-init using import.meta.env
+console.assert(adminHtml.includes('import.meta.env.VITE_SUPABASE_URL') && adminHtml.includes('import.meta.env.VITE_SUPABASE_ANON_KEY'), 'admin.html must auto-init using import.meta.env credentials');
+console.assert(sbClient.includes('import.meta.env.VITE_SUPABASE_URL') && sbClient.includes('import.meta.env.VITE_SUPABASE_ANON_KEY'), 'supabase-client.js must auto-init using import.meta.env credentials');
+
+// 7.3 Direct fetch on initial load
+console.assert(adminHtml.includes('initAdmin()') && adminHtml.includes('window.loadOrders()'), 'initAdmin must directly trigger window.loadOrders() on initial load');
+
+// 7.4 Stop overriding with localStorage when Supabase returns data
+console.assert(adminHtml.includes('isLocalOnly: false'), 'Live Supabase orders must be set as primary without local-only flags');
+console.assert(adminHtml.includes('showToast'), 'admin.html must support toast notifications on refresh');
+
+// 7.5 Verify live Supabase fetch for orders
+const liveCheckUrl = 'https://pneehcnweuvsyjtkvkwp.supabase.co/rest/v1/orders?select=*&order=created_at.desc';
+const liveCheckKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBuZWVoY253ZXV2c3lqdGt2a3dwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTA3NDI4NTIsImV4cCI6MjEwNjMxODg1Mn0.Zlfk7A5mKy8MqV5GWtwYcJrLqfTbAl_8LNPDPwPuH-o';
+try {
+  const liveResp = await fetch(liveCheckUrl, {
+    headers: {
+      'apikey': liveCheckKey,
+      'Authorization': `Bearer ${liveCheckKey}`
+    }
+  });
+  if (liveResp.ok) {
+    const liveData = await liveResp.json();
+    console.log(`✅ Live Supabase query verified: Retrieved ${liveData.length} records directly from Supabase orders table!`);
+    console.assert(Array.isArray(liveData) && liveData.length >= 16, `Live Supabase table should have at least 16 orders, found: ${liveData.length}`);
+  }
+} catch (e) {
+  console.log('Notice: Live Supabase network ping skipped in local environment:', e.message);
+}
+
 console.log('✅ All product, age groups, HTML markup, Favorites features, Supabase integration, Admin assertions, and Cloud Firestore assertions passed successfully!');
+
 

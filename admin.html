@@ -267,15 +267,15 @@
 
       <form id="config-form" onsubmit="handleSaveConfig(event)">
         <div class="form-field">
-          <label for="cfg-url">Supabase Project URL</label>
-          <input type="url" id="cfg-url" required placeholder="https://your-project-id.supabase.co">
-          <small style="color: var(--admin-text-muted); font-size: 0.74rem;">Found in Supabase Console &gt; Project Settings &gt; API</small>
+          <label for="cfg-url"><i class="fas fa-unlock-alt text-primary"></i> Supabase Project URL (Unlocked)</label>
+          <input type="url" id="cfg-url" required placeholder="https://your-project-id.supabase.co" autocomplete="off" spellcheck="false" class="unlocked-input">
+          <small style="color: var(--admin-text-muted); font-size: 0.74rem;">Found in Supabase Console &gt; Project Settings &gt; API (Directly editable)</small>
         </div>
 
         <div class="form-field">
-          <label for="cfg-anon-key">Supabase Anon / Public Key</label>
-          <input type="text" id="cfg-anon-key" required placeholder="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...">
-          <small style="color: var(--admin-text-muted); font-size: 0.74rem;">The public anon key (safe for browser client)</small>
+          <label for="cfg-anon-key"><i class="fas fa-key text-primary"></i> Supabase Anon / Public Key (Unlocked)</label>
+          <input type="text" id="cfg-anon-key" required placeholder="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..." autocomplete="off" spellcheck="false" class="unlocked-input">
+          <small style="color: var(--admin-text-muted); font-size: 0.74rem;">The public anon key (safe for browser client - directly editable)</small>
         </div>
 
         <div id="cfg-status-message" style="margin-bottom: 16px;"></div>
@@ -316,16 +316,66 @@
     let unsubscribeFirestoreOrders = null;
     let realtimeSubscription = null;
 
-    // Supabase Credentials & Direct Client Instance
-    const activeCreds = getActiveCredentials();
-    const supabaseUrl = (typeof localStorage !== 'undefined' && localStorage.getItem('BUBBLES_SUPABASE_URL')) || activeCreds.url || SUPABASE_CONFIG.url;
-    const supabaseAnonKey = (typeof localStorage !== 'undefined' && localStorage.getItem('BUBBLES_SUPABASE_ANON_KEY')) || activeCreds.anonKey || SUPABASE_CONFIG.anonKey;
+    // Automatic Supabase Initialization using import.meta.env.VITE_SUPABASE_URL and import.meta.env.VITE_SUPABASE_ANON_KEY
+    const envUrl = (typeof import.meta !== 'undefined' && import.meta.env && import.meta.env.VITE_SUPABASE_URL) 
+      ? import.meta.env.VITE_SUPABASE_URL 
+      : null;
+    const envAnonKey = (typeof import.meta !== 'undefined' && import.meta.env && import.meta.env.VITE_SUPABASE_ANON_KEY) 
+      ? import.meta.env.VITE_SUPABASE_ANON_KEY 
+      : null;
 
-    export const supabase = (typeof window !== 'undefined' && window.supabase && window.supabase.createClient)
-      ? window.supabase.createClient(supabaseUrl, supabaseAnonKey, {
-          auth: { persistSession: true, autoRefreshToken: true }
+    const activeCreds = getActiveCredentials();
+    export const supabaseUrl = envUrl || (typeof localStorage !== 'undefined' && localStorage.getItem('BUBBLES_SUPABASE_URL')) || activeCreds.url || SUPABASE_CONFIG.url;
+    export const supabaseAnonKey = envAnonKey || (typeof localStorage !== 'undefined' && localStorage.getItem('BUBBLES_SUPABASE_ANON_KEY')) || activeCreds.anonKey || SUPABASE_CONFIG.anonKey;
+
+    // Automatic Supabase client initialization without waiting for manual input or local configuration
+    function initSupabaseInstance() {
+      const createFn = (typeof window !== 'undefined' && window.supabase && typeof window.supabase.createClient === 'function')
+        ? window.supabase.createClient
+        : (typeof window !== 'undefined' && window.supabasejs && typeof window.supabasejs.createClient === 'function')
+          ? window.supabasejs.createClient
+          : null;
+
+      if (createFn) {
+        try {
+          return createFn(supabaseUrl, supabaseAnonKey, {
+            auth: { persistSession: true, autoRefreshToken: true }
+          });
+        } catch (e) {
+          console.error('Error initializing Supabase SDK client:', e);
+        }
+      }
+      return getSupabaseClient();
+    }
+
+    const _sdk = initSupabaseInstance();
+
+    // Universal Supabase client with guaranteed query capability
+    export const supabase = _sdk || {
+      from: (table) => ({
+        select: (cols = '*') => ({
+          order: async (field, opts = {}) => {
+            const orderParam = opts.ascending ? `${field}.asc` : `${field}.desc`;
+            const resp = await fetch(`${supabaseUrl}/rest/v1/${table}?select=${encodeURIComponent(cols)}&order=${orderParam}`, {
+              headers: {
+                'apikey': supabaseAnonKey,
+                'Authorization': `Bearer ${supabaseAnonKey}`,
+                'Accept': 'application/json'
+              }
+            });
+            if (resp.ok) {
+              const data = await resp.json();
+              return { data: Array.isArray(data) ? data : [], error: null };
+            }
+            return { data: null, error: new Error(`REST Error: ${resp.status}`) };
+          }
         })
-      : getSupabaseClient();
+      }),
+      channel: (name) => ({
+        on: () => ({ subscribe: () => ({ unsubscribe: () => {} }) }),
+        subscribe: () => ({ unsubscribe: () => {} })
+      })
+    };
 
     if (typeof window !== 'undefined') {
       window.supabaseClient = supabase;
@@ -353,6 +403,51 @@
         }
       }
       return [];
+    }
+
+    // Toast notification helper for UI feedback
+    function showToast(message, type = 'success') {
+      let container = document.getElementById('admin-toast-container');
+      if (!container) {
+        container = document.createElement('div');
+        container.id = 'admin-toast-container';
+        container.style.cssText = 'position:fixed;bottom:24px;right:24px;z-index:999999;display:flex;flex-direction:column;gap:10px;pointer-events:none;';
+        document.body.appendChild(container);
+      }
+
+      const toast = document.createElement('div');
+      const bg = type === 'error' ? '#EF4444' : (type === 'warning' ? '#F59E0B' : '#10B981');
+      const icon = type === 'error' ? 'fa-exclamation-triangle' : (type === 'warning' ? 'fa-info-circle' : 'fa-check-circle');
+      toast.style.cssText = `background:${bg};color:#ffffff;padding:12px 20px;border-radius:8px;font-size:0.92rem;font-weight:600;box-shadow:0 6px 16px rgba(0,0,0,0.18);display:flex;align-items:center;gap:10px;pointer-events:auto;transition:all 0.3s ease;`;
+      toast.innerHTML = `<i class="fas ${icon}"></i> <span>${escapeHtml(message)}</span>`;
+      container.appendChild(toast);
+
+      setTimeout(() => {
+        toast.style.opacity = '0';
+        toast.style.transform = 'translateY(10px)';
+        setTimeout(() => toast.remove(), 350);
+      }, 3500);
+    }
+
+    // Ensure all Supabase credentials inputs are unlocked (no disabled, readOnly, or locked state)
+    function unlockCredentialsInputs() {
+      const urlInput = document.getElementById('cfg-url');
+      const keyInput = document.getElementById('cfg-anon-key');
+
+      if (urlInput) {
+        urlInput.disabled = false;
+        urlInput.readOnly = false;
+        urlInput.removeAttribute('disabled');
+        urlInput.removeAttribute('readonly');
+        urlInput.value = supabaseUrl;
+      }
+      if (keyInput) {
+        keyInput.disabled = false;
+        keyInput.readOnly = false;
+        keyInput.removeAttribute('disabled');
+        keyInput.removeAttribute('readonly');
+        keyInput.value = supabaseAnonKey;
+      }
     }
 
     // ==============================================================================
@@ -402,9 +497,9 @@
       return localList;
     }
 
-    // Immediate fallback: only displays localStorage when allOrdersData is empty (offline startup)
+    // Immediate fallback helper
     function loadLocalStorageOrdersImmediate() {
-      // Do not overwrite or limit the dashboard state when Supabase orders are already loaded
+      // Do not overwrite or limit dashboard state when Supabase orders are loaded
       if (allOrdersData.length > 0 && allOrdersData.some(o => o.isLocalOnly === false)) {
         return;
       }
@@ -494,15 +589,13 @@
     // Initialize Page safely
     function initAdmin() {
       updateNavConfigStatus();
-      // 1. Initial offline fallback display if no data loaded yet
-      loadLocalStorageOrdersImmediate();
-      // 2. Check auth or display store manager view
-      checkCurrentAuth();
-      // 3. Immediately fetch live rows directly from Supabase as primary source
+      unlockCredentialsInputs();
+      showDashboardView({ email: 'Store Manager (Supabase Live)' });
+      // In the Dashboard component, directly fetch all records from the orders table on initial load
       window.loadOrders();
-      // 4. Set up Supabase Realtime channel listener on orders table
+      // Set up Supabase Realtime channel listener on orders table
       setupRealtimeSubscription();
-      // 5. Connect Cloud Firestore real-time listener
+      // Connect Cloud Firestore listener
       initFirestoreOrdersListener();
     }
 
@@ -547,7 +640,7 @@
       window.initFirestoreOrdersListener = initFirestoreOrdersListener;
     }
 
-    // Real-Time Supabase Subscription on orders table
+    // Real-Time Supabase Subscription on orders table (custom-all-channel)
     function setupRealtimeSubscription() {
       if (realtimeSubscription) {
         try { realtimeSubscription.unsubscribe(); } catch(e) {}
@@ -577,16 +670,7 @@
 
     // Check user auth status
     async function checkCurrentAuth() {
-      try {
-        activeSession = await getAdminSession();
-        if (activeSession && activeSession.user) {
-          showDashboardView(activeSession.user);
-        } else {
-          showDashboardView({ email: 'admin@bubbles.lk (Supabase Live)' });
-        }
-      } catch (err) {
-        showDashboardView({ email: 'admin@bubbles.lk (Supabase Live)' });
-      }
+      showDashboardView({ email: 'Store Manager (Supabase Live)' });
     }
 
     // Direct dashboard entry using API Key
@@ -674,7 +758,7 @@
       showLoginView();
     };
 
-    // Fetch and render orders directly from Supabase as primary data source
+    // Fetch all records directly from orders table as the primary orders list
     window.loadOrders = async function(isSilent = false) {
       const refreshIcon = document.getElementById('refresh-icon');
       if (refreshIcon && !isSilent) refreshIcon.classList.add('fa-spin');
@@ -684,7 +768,7 @@
         let liveOrders = null;
         let queryError = null;
 
-        // 1. Primary data source: direct Supabase query
+        // 1. Direct Supabase query: supabase.from('orders').select('*').order('created_at', { ascending: false })
         if (supabase && typeof supabase.from === 'function') {
           try {
             const { data, error } = await supabase
@@ -704,7 +788,7 @@
           }
         }
 
-        // 2. Direct REST fallback if SDK failed or returned nothing
+        // 2. Direct REST fallback if needed
         if (!liveOrders && supabaseUrl && supabaseAnonKey) {
           try {
             const resp = await fetch(`${supabaseUrl}/rest/v1/orders?select=*&order=created_at.desc`, {
@@ -726,39 +810,39 @@
           }
         }
 
-        // 3. Update dashboard state
+        // 3. Set that as the primary orders list & STOP falling back or overriding with localStorage whenever Supabase returns data
         if (liveOrders && Array.isArray(liveOrders)) {
           // Log fetched count to console as explicitly requested
           console.log(`Successfully fetched ${liveOrders.length} live orders directly from Supabase.`);
 
-          // Live rows from Supabase are primary (isLocalOnly: false)
-          const formattedLiveOrders = liveOrders.map(o => ({
+          // Set as primary orders list without local backup badge
+          allOrdersData = liveOrders.map(o => ({
             ...o,
             isLocalOnly: false
           }));
 
-          // Do NOT overwrite or limit dashboard state to localStorage when Supabase is connected.
-          // Only append unsynced local offline orders that are not yet in Supabase
-          const localOrders = getLocalOrdersFallback();
-          const unsyncedLocal = localOrders.filter(lo => {
-            const lKey = lo.order_number || lo.orderId || String(lo.id || '');
-            return lKey && !formattedLiveOrders.some(ro => {
-              const rKey = ro.order_number || ro.orderId || String(ro.id || '');
-              return rKey === lKey;
-            });
-          });
+          // Stop falling back to or overriding UI with localStorage whenever Supabase returns data!
+          console.log(`Admin Dashboard: Primary orders list updated with ${allOrdersData.length} records from Supabase.`);
 
-          allOrdersData = [...formattedLiveOrders, ...unsyncedLocal];
-          console.log(`Dashboard displaying ${allOrdersData.length} total orders (${formattedLiveOrders.length} live Supabase rows, ${unsyncedLocal.length} unsynced local backup rows).`);
+          renderOrdersTable();
+          updateKPIs();
 
           const noticeBanner = document.getElementById('dashboard-notice-banner');
           if (noticeBanner) noticeBanner.style.display = 'none';
+
+          // Show toast with retrieved record count on refresh
+          if (!isSilent) {
+            showToast(`Retrieved ${liveOrders.length} live orders from Supabase`, 'success');
+          }
         } else {
-          // Supabase is completely unreachable: fall back to localStorage
+          // Only fallback to localStorage if Supabase is completely unreachable
           console.warn('Could not reach Supabase. Falling back to localStorage orders.');
           const localOrders = getLocalOrdersFallback();
           allOrdersData = localOrders;
           console.log(`Dashboard displaying ${allOrdersData.length} orders from localStorage fallback.`);
+
+          renderOrdersTable();
+          updateKPIs();
 
           const noticeBanner = document.getElementById('dashboard-notice-banner');
           if (noticeBanner) {
@@ -766,12 +850,14 @@
             noticeBanner.innerHTML = `<i class="fas fa-exclamation-triangle"></i> <div><strong>Offline Mode:</strong> Supabase cloud query failed. Showing ${localOrders.length} orders from Local Backup.</div>`;
             noticeBanner.style.display = 'flex';
           }
-        }
 
-        renderOrdersTable();
-        updateKPIs();
+          if (!isSilent) {
+            showToast(`Offline mode: ${localOrders.length} orders from local backup`, 'warning');
+          }
+        }
       } catch (err) {
         console.error('Unexpected error in loadOrders:', err);
+        if (!isSilent) showToast('Sync error: ' + err.message, 'error');
       } finally {
         if (refreshIcon && !isSilent) refreshIcon.classList.remove('fa-spin');
       }
@@ -1198,6 +1284,7 @@
 
     // Config Modal
     window.openConfigModal = function() {
+      unlockCredentialsInputs();
       const creds = getActiveCredentials();
       document.getElementById('cfg-url').value = creds.url && !creds.url.includes('YOUR_SUPABASE_PROJECT_ID') ? creds.url : '';
       document.getElementById('cfg-anon-key').value = creds.anonKey && !creds.anonKey.includes('YOUR_SUPABASE_ANON_KEY') ? creds.anonKey : '';
