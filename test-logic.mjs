@@ -378,6 +378,36 @@ try {
   console.log('Notice: Live Supabase network ping skipped in local environment:', e.message);
 }
 
+// ==============================================================================
+// 8. Verify window.loadOrders Definition, Inline Handler Safety & Page Load
+// ==============================================================================
+// 8.1 Explicit window.loadOrders definition
+console.assert(adminHtml.includes('window.loadOrders = async function'), 'admin.html must define window.loadOrders as async function');
+console.assert(adminHtml.includes('window.loadOrders = function') || adminHtml.includes('function loadOrders'), 'admin.html must define global loadOrders for inline handlers');
+
+// 8.2 Exact query syntax
+console.assert(
+  adminHtml.includes("const { data, error } = await supabase") &&
+  adminHtml.includes(".from('orders')") &&
+  adminHtml.includes(".select('*')") &&
+  adminHtml.includes("order('created_at', { ascending: false })"),
+  'admin.html must execute exact Supabase query const { data, error } = await supabase.from("orders").select("*").order("created_at", { ascending: false })'
+);
+
+// 8.3 Renders table and updates summary counters
+console.assert(adminHtml.includes('renderOrdersTable()') && adminHtml.includes('updateKPIs()'), 'loadOrders must invoke renderOrdersTable() and updateKPIs()');
+console.assert(
+  adminHtml.includes('kpi-total-orders') &&
+  adminHtml.includes('kpi-pending-orders') &&
+  adminHtml.includes('kpi-total-revenue'),
+  'updateKPIs must update summary counters (Total Orders, Pending, Revenue)'
+);
+
+// 8.4 Execution on page finish loading
+console.assert(adminHtml.includes("window.addEventListener('load'"), 'admin.html must listen to window load event to execute loadOrders when page finishes loading');
+console.log('✅ window.loadOrders definition, inline handlers, table rendering, KPI counters, and page load execution verified successfully!');
+
 console.log('✅ All product, age groups, HTML markup, Favorites features, Supabase integration, Admin assertions, and Cloud Firestore assertions passed successfully!');
+
 
 

@@ -196,7 +196,7 @@
           <i class="fas fa-plus-circle"></i> Test Order
         </button>
 
-        <button type="button" class="btn-adm btn-adm-secondary" onclick="loadOrders()" id="btn-refresh" title="Reload orders">
+        <button type="button" class="btn-adm btn-adm-secondary" onclick="window.loadOrders ? window.loadOrders() : loadOrders()" id="btn-refresh" title="Reload orders">
           <i class="fas fa-sync-alt" id="refresh-icon"></i> Refresh
         </button>
       </div>
@@ -291,6 +291,18 @@
   <!-- ==============================================================================
        ADMIN DASHBOARD JAVASCRIPT LOGIC
        ============================================================================== -->
+  <script>
+    // Ensure loadOrders is always defined on window and globally for HTML inline handlers like onclick="loadOrders()"
+    window.loadOrders = function(...args) {
+      if (typeof window._loadOrdersAsync === 'function') {
+        return window._loadOrdersAsync(...args);
+      }
+      console.warn('loadOrders called before module initialization is complete.');
+    };
+    function loadOrders(...args) {
+      return window.loadOrders(...args);
+    }
+  </script>
   <script type="module">
     import { db } from './firebaseConfig.js';
     import { collection, query, orderBy, onSnapshot, doc, updateDoc, addDoc, serverTimestamp } from 'firebase/firestore';
@@ -586,25 +598,6 @@
       updateKPIs();
     }
 
-    // Initialize Page safely
-    function initAdmin() {
-      updateNavConfigStatus();
-      unlockCredentialsInputs();
-      showDashboardView({ email: 'Store Manager (Supabase Live)' });
-      // In the Dashboard component, directly fetch all records from the orders table on initial load
-      window.loadOrders();
-      // Set up Supabase Realtime channel listener on orders table
-      setupRealtimeSubscription();
-      // Connect Cloud Firestore listener
-      initFirestoreOrdersListener();
-    }
-
-    if (document.readyState === 'loading') {
-      document.addEventListener('DOMContentLoaded', initAdmin);
-    } else {
-      initAdmin();
-    }
-
     // Real-Time Cloud Firestore onSnapshot Listener
     export function initFirestoreOrdersListener() {
       if (unsubscribeFirestoreOrders) {
@@ -863,7 +856,10 @@
       }
     };
 
-    // Storage listener for cross-tab or cross-window checkout updates
+    window._loadOrdersAsync = window.loadOrders;
+    if (typeof globalThis !== 'undefined') {
+      globalThis.loadOrders = window.loadOrders;
+    }
     if (typeof window !== 'undefined') {
       window.addEventListener('storage', (e) => {
         if (e.key === 'BUBBLES_ORDERS_HISTORY' || e.key === 'BUBBLES_ORDERS') {
@@ -1353,6 +1349,41 @@
         .replace(/>/g, '&gt;')
         .replace(/"/g, '&quot;')
         .replace(/'/g, '&#039;');
+    }
+
+    // Initialize Page safely
+    let adminInitialized = false;
+    function initAdmin() {
+      if (adminInitialized) return;
+      adminInitialized = true;
+      updateNavConfigStatus();
+      unlockCredentialsInputs();
+      showDashboardView({ email: 'Store Manager (Supabase Live)' });
+      // In the Dashboard component, directly fetch all records from the orders table on initial load
+      if (typeof window.loadOrders === 'function') {
+        window.loadOrders();
+      }
+      // Set up Supabase Realtime channel listener on orders table
+      setupRealtimeSubscription();
+      // Connect Cloud Firestore listener
+      initFirestoreOrdersListener();
+    }
+
+    // Ensure window.loadOrders() is executed when the page finishes loading
+    if (typeof window !== 'undefined') {
+      if (document.readyState === 'complete') {
+        initAdmin();
+      } else {
+        window.addEventListener('load', () => {
+          initAdmin();
+          if (typeof window.loadOrders === 'function') {
+            window.loadOrders(true);
+          }
+        });
+        document.addEventListener('DOMContentLoaded', () => {
+          initAdmin();
+        });
+      }
     }
   </script>
 </body>
