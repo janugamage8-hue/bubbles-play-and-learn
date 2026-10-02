@@ -332,5 +332,13 @@ const foundFallbackOrder = historyAfterFallback.find(o => o.order_number === 'BU
 console.assert(!!foundFallbackOrder, 'Order BUB-TIMEOUT-TEST-01 must be saved to BUBBLES_ORDERS_HISTORY even on error');
 console.log('✅ Checkout submission timeout and BUBBLES_ORDERS_HISTORY fallback verified successfully!');
 
+// ==============================================================================
+// 6. Verify Admin Dashboard Direct Supabase Query & Realtime Channel
+// ==============================================================================
+console.assert(adminHtml.includes(".from('orders')") && adminHtml.includes(".select('*')") && adminHtml.includes("order('created_at', { ascending: false })"), 'admin.html must query orders directly from Supabase ordered by created_at desc');
+console.assert(adminHtml.includes(".channel('custom-all-channel')"), 'admin.html must listen on custom-all-channel');
+console.assert(adminHtml.includes('Successfully fetched'), 'admin.html must log fetched count to console on refresh');
+console.log('✅ Admin Dashboard direct Supabase query and custom-all-channel verified successfully!');
+
 console.log('✅ All product, age groups, HTML markup, Favorites features, Supabase integration, Admin assertions, and Cloud Firestore assertions passed successfully!');
 
