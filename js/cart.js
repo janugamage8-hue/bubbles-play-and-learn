@@ -731,61 +731,54 @@ if (typeof window !== 'undefined') {
     cartState: cartState
   };
 
+  let supaResult = null;
+
   try {
-    // 1. Immediately save to localStorage BUBBLES_ORDERS_HISTORY fallback
+    // 1. Immediately save to localStorage BUBBLES_ORDERS_HISTORY fallback so the order is never lost
     saveLocalOrderBackup(orderData);
 
-    // 2. Insert order into Supabase cloud orders table
-    const supaResult = await submitOrderToSupabase(orderData);
-    console.log('Order submitted to Supabase successfully:', supaResult);
-
-    // 3. Also record in Firestore if available
-    let firestoreResult = null;
+    // 2. Insert order into Supabase cloud orders table with strict timeout and error handling
     try {
-      firestoreResult = await handlePlaceOrder(orderData);
+      supaResult = await submitOrderToSupabase(orderData);
+      console.log('Order submitted to Supabase successfully:', supaResult);
+    } catch (supaErr) {
+      console.error('Supabase checkout submission error:', supaErr);
+      saveLocalOrderBackup(orderData);
+      supaResult = { success: true, data: orderData, isLocalOnly: true, error: supaErr.message };
+    }
+
+    // 3. Also record in Firestore if available (with timeout so it never hangs)
+    try {
+      await Promise.race([
+        handlePlaceOrder(orderData),
+        new Promise((_, reject) => setTimeout(() => reject(new Error('Firestore timeout')), 2500))
+      ]);
     } catch (fireErr) {
       console.log('Firestore notice:', fireErr);
     }
 
-    // Success! Clear cart and display order confirmation modal
-    cartManager.clearCart();
-    window.renderOrderSuccessModal(orderData, supaResult);
-
-    // Trigger local order event so Admin Dashboard in this or another tab updates immediately
+    // 4. Trigger local order event so Admin Dashboard in this or another tab updates immediately
     if (typeof window !== 'undefined') {
       try {
         window.dispatchEvent(new CustomEvent('bubbles:orderPlaced', { detail: orderData }));
       } catch (e) {}
     }
+
+    // 5. Success! Clear cart and ALWAYS proceed to Thank You screen
+    cartManager.clearCart();
+    window.renderOrderSuccessModal(orderData, supaResult);
   } catch (err) {
-    console.log('Checkout submission error:', err);
+    console.error('Checkout submission unexpected error:', err);
+    // Fall back to saving the order to BUBBLES_ORDERS_HISTORY in localStorage so the user is never stuck
+    saveLocalOrderBackup(orderData);
+    cartManager.clearCart();
+    // Always proceed to the Thank You screen
+    window.renderOrderSuccessModal(orderData, { success: true, isLocalOnly: true, error: err.message });
+  } finally {
+    // Always reset the loading state
     if (submitBtn) {
       submitBtn.disabled = false;
       submitBtn.innerHTML = originalBtnHtml;
-    }
-
-    // Friendly fallback alert with option to submit directly via WhatsApp
-    const shouldWhatsApp = confirm(
-      `⚠️ Notice: Could not save order directly to Firestore (${err.message || 'connection issue'}).\n\n` +
-      `Would you like to confirm and place your order directly via WhatsApp right now?`
-    );
-
-    if (shouldWhatsApp) {
-      const itemsSummary = orderData.cartState.items.map(it => `• ${it.title} x${it.quantity} (LKR ${(it.price * it.quantity).toLocaleString()})`).join('\n');
-      const text = encodeURIComponent(
-        `Hi Bubbles Play & Learn Co.! 🫧\n\n` +
-        `I would like to place an order:\n` +
-        `🧾 Order Ref: ${orderData.orderId}\n` +
-        `👤 Name: ${orderData.customer.fullName}\n` +
-        `📞 Phone: ${orderData.customer.phone}\n` +
-        `📍 Delivery: ${orderData.customer.address}, ${orderData.customer.city}, ${orderData.customer.district}\n\n` +
-        `📦 Items:\n${itemsSummary}\n\n` +
-        `💰 Total: LKR ${orderData.cartState.total.toLocaleString()}\n` +
-        `💳 Payment: ${orderData.paymentMethod.toUpperCase()}`
-      );
-      window.open(`https://wa.me/94779882000?text=${text}`, '_blank');
-      window.closeCheckoutModal();
-      cartManager.clearCart();
     }
   }
 };

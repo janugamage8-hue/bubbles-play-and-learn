@@ -179,31 +179,60 @@ export async function submitOrderToSupabase(orderData) {
 
   const client = getSupabaseClient();
   let savedRecord = null;
+  let supabaseError = null;
 
-  // 2. Try inserting via Supabase SDK client
+  // Strict 5-second timeout helper for network calls
+  const withTimeout = (promise, ms = 5000, errorMsg = 'Operation timed out after 5 seconds') => {
+    let timeoutId;
+    const timeoutPromise = new Promise((_, reject) => {
+      timeoutId = setTimeout(() => reject(new Error(errorMsg)), ms);
+    });
+    return Promise.race([promise, timeoutPromise]).finally(() => {
+      if (timeoutId) clearTimeout(timeoutId);
+    });
+  };
+
+  // 2. Strict 5-second timeout and proper try...catch block around Supabase .from('orders').insert(...)
   if (client) {
     try {
-      const res = await client.from('orders').insert([fullPayload]).select();
-      if (!res.error && res.data && res.data[0]) {
-        savedRecord = { ...fullPayload, ...res.data[0], isLocalOnly: false };
-      } else if (!res.error) {
-        savedRecord = { ...fullPayload, isLocalOnly: false };
-      } else {
-        // Retry insert without select (in case select RLS restricts anon)
-        const insertOnly = await client.from('orders').insert([fullPayload]);
-        if (!insertOnly.error) {
-          savedRecord = { ...fullPayload, isLocalOnly: false };
+      const insertPromise = client.from('orders').insert([fullPayload]).select();
+      const res = await withTimeout(insertPromise, 5000, 'Supabase .from("orders").insert(...) timed out after 5 seconds');
+
+      if (res && res.error) {
+        supabaseError = res.error;
+        console.error('Supabase .from("orders").insert(...) error (e.g. RLS or permissions):', res.error);
+
+        // Fallback: Try insert without .select() within 2.5s in case SELECT RLS policy restricts anonymous reads
+        try {
+          const insertOnlyPromise = client.from('orders').insert([fullPayload]);
+          const insertOnlyRes = await withTimeout(insertOnlyPromise, 2500, 'Supabase insert without select timed out');
+          if (!insertOnlyRes.error) {
+            savedRecord = { ...fullPayload, isLocalOnly: false };
+            supabaseError = null;
+          } else {
+            console.error('Supabase insertOnly fallback error:', insertOnlyRes.error);
+          }
+        } catch (retryErr) {
+          console.error('Supabase retry exception:', retryErr);
         }
+      } else if (res && res.data && res.data[0]) {
+        savedRecord = { ...fullPayload, ...res.data[0], isLocalOnly: false };
+      } else {
+        savedRecord = { ...fullPayload, isLocalOnly: false };
       }
     } catch (clientErr) {
-      console.warn('Supabase client insert error, will try REST fallback:', clientErr);
+      supabaseError = clientErr;
+      console.error('Supabase .from("orders").insert(...) call failed or timed out:', clientErr);
     }
   }
 
-  // 3. If SDK insert didn't succeed, use direct HTTPS REST PostgREST API
+  // 3. If SDK insert didn't succeed, use direct HTTPS REST PostgREST API with strict timeout
   if (!savedRecord && url && anonKey) {
     try {
-      const resp = await fetch(`${url}/rest/v1/orders`, {
+      const controller = typeof AbortController !== 'undefined' ? new AbortController() : null;
+      const timeoutTimer = controller ? setTimeout(() => controller.abort(), 4500) : null;
+
+      const restPromise = fetch(`${url}/rest/v1/orders`, {
         method: 'POST',
         headers: {
           'apikey': anonKey,
@@ -211,19 +240,26 @@ export async function submitOrderToSupabase(orderData) {
           'Content-Type': 'application/json',
           'Prefer': 'return=representation'
         },
-        body: JSON.stringify(fullPayload)
+        body: JSON.stringify(fullPayload),
+        signal: controller ? controller.signal : undefined
       });
 
-      if (resp.ok) {
+      const resp = await withTimeout(restPromise, 4500, 'Supabase direct REST timed out after 4.5s');
+      if (timeoutTimer) clearTimeout(timeoutTimer);
+
+      if (resp && resp.ok) {
         const json = await resp.json();
         savedRecord = (json && json[0]) ? { ...fullPayload, ...json[0], isLocalOnly: false } : { ...fullPayload, isLocalOnly: false };
         console.log('✅ Order successfully saved to Supabase via direct REST API:', savedRecord.order_number);
-      } else {
+        supabaseError = null;
+      } else if (resp) {
         const errText = await resp.text();
-        console.warn('Supabase direct REST error:', resp.status, errText);
+        console.error('Supabase direct REST error:', resp.status, errText);
+        supabaseError = new Error(`Supabase REST status ${resp.status}: ${errText}`);
       }
     } catch (fetchErr) {
-      console.warn('Supabase direct REST fetch error:', fetchErr);
+      console.error('Supabase direct REST fetch error:', fetchErr);
+      if (!supabaseError) supabaseError = fetchErr;
     }
   }
 
@@ -233,12 +269,16 @@ export async function submitOrderToSupabase(orderData) {
     return { success: true, data: savedRecord };
   }
 
-  // 4. Return local backup record if offline
+  // 4. If Supabase fails (e.g., due to RLS permission or network error), log exact error to console.error AND fall back to saving order to BUBBLES_ORDERS_HISTORY in localStorage so the user is never stuck
+  console.error('Supabase order submission failed. Falling back to BUBBLES_ORDERS_HISTORY in localStorage:', supabaseError || 'Supabase unavailable');
+  saveLocalOrderBackup(initialLocalRecord);
   notifyOrderPlaced(initialLocalRecord);
+
   return {
     success: true,
     data: initialLocalRecord,
     isLocalOnly: true,
+    error: supabaseError ? (supabaseError.message || String(supabaseError)) : 'Supabase insert failed',
     message: 'Order saved locally in BUBBLES_ORDERS_HISTORY'
   };
 }

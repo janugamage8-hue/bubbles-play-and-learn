@@ -300,7 +300,37 @@ console.assert(foundLocalOrder.customer_name === 'Local Test Customer', 'Custome
 // Test that existing order BUB-450199 is present and retrieved
 const foundExistingOrder = historyFetchRes.data.find(o => o.order_number === 'BUB-450199');
 console.assert(!!foundExistingOrder, 'Order BUB-450199 must be present in fetchAllOrders');
-console.log('✅ BUBBLES_ORDERS_HISTORY fallback and retrieval verified for both BUB-LOCAL-TEST-99 and BUB-450199');
+// ==============================================================================
+// 5. Verify Checkout Submission Timeout, Loading State Reset & Error Resilience
+// ==============================================================================
+console.assert(sbClient.includes('withTimeout'), 'supabase-client.js must include timeout wrapper for Supabase requests');
+console.assert(sbClient.includes('5000'), 'supabase-client.js must specify 5000ms timeout for order insertion');
+console.assert(cartJsCode.includes('saveLocalOrderBackup(orderData)'), 'cart.js must backup order to localStorage');
+console.assert(cartJsCode.includes('finally {') && cartJsCode.includes('submitBtn.disabled = false'), 'cart.js must reset submit button loading state in finally block');
+console.assert(cartJsCode.includes('renderOrderSuccessModal'), 'cart.js must always proceed to Thank You modal');
+
+// Functional test: verify that an order is saved locally even when Supabase errors out
+const testFallbackOrder = {
+  order_number: 'BUB-TIMEOUT-TEST-01',
+  customer_name: 'Timeout Test User',
+  customer_phone: '077 000 1122',
+  customer_address: '404 Network Avenue',
+  district: 'Gampaha',
+  total_amount: 3200,
+  payment_method: 'cod',
+  items: [{ id: 'toy-sub', title: 'Sensory Ball', price: 3200, quantity: 1 }]
+};
+
+const startTime = Date.now();
+const fallbackSubmitRes = await submitOrderToSupabase(testFallbackOrder);
+const elapsed = Date.now() - startTime;
+console.assert(elapsed < 10000, `submitOrderToSupabase must resolve within strict timeout, took ${elapsed}ms`);
+console.assert(fallbackSubmitRes.success === true, 'submitOrderToSupabase must return success: true (either cloud or local fallback)');
+
+const historyAfterFallback = JSON.parse(globalThis.localStorage.getItem('BUBBLES_ORDERS_HISTORY') || '[]');
+const foundFallbackOrder = historyAfterFallback.find(o => o.order_number === 'BUB-TIMEOUT-TEST-01');
+console.assert(!!foundFallbackOrder, 'Order BUB-TIMEOUT-TEST-01 must be saved to BUBBLES_ORDERS_HISTORY even on error');
+console.log('✅ Checkout submission timeout and BUBBLES_ORDERS_HISTORY fallback verified successfully!');
 
 console.log('✅ All product, age groups, HTML markup, Favorites features, Supabase integration, Admin assertions, and Cloud Firestore assertions passed successfully!');
 
