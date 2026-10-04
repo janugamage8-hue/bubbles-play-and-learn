@@ -146,15 +146,14 @@ input:focus, select:focus, textarea:focus {
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  background-color: var(--color-primary-light);
+  background: transparent;
   color: var(--color-primary);
   font-size: 0.82rem;
-  font-weight: 700;
+  font-weight: 800;
   text-transform: uppercase;
-  letter-spacing: 0.06em;
-  padding: 6px 16px;
-  border-radius: var(--radius-pill);
-  margin-bottom: 16px;
+  letter-spacing: 0.08em;
+  padding: 0;
+  margin-bottom: 12px;
 }
 
 .section-title {
