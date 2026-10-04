@@ -17,23 +17,63 @@ class BubblesApp {
   }
 
   init() {
+    // 1. Read URL query parameters on initial page load (e.g. ?age=0-1y, ?search=puzzle, ?filter=favorites)
+    if (typeof window !== 'undefined' && window.location && window.location.search) {
+      const params = new URLSearchParams(window.location.search);
+      const ageParam = params.get('age');
+      if (ageParam) {
+        this.currentAge = ageParam;
+      }
+      const searchParam = params.get('search');
+      if (searchParam) {
+        this.searchQuery = searchParam.toLowerCase().trim();
+      }
+      if (params.get('filter') === 'favorites' || (window.location.hash && window.location.hash.includes('favorites'))) {
+        this.showFavoritesOnly = true;
+      }
+    }
+
     this.renderHeaderNav();
     this.renderShopByAgeSection();
     this.renderAgeCategorySection();
     this.renderCuratedBoxes();
     this.renderProductsCatalog();
+    this.renderFeaturedProducts();
     this.renderSavedFavorites();
     this.setupEventListeners();
 
-    // Initialize Submodules
-    window.boxBuilder = new BoxBuilder('box-builder-app');
-    window.boxBuilder.init();
+    // Sync input fields if populated via query params
+    if (this.searchQuery) {
+      const searchInput = document.getElementById('search-catalog-input');
+      if (searchInput) searchInput.value = this.searchQuery;
+    }
+    if (this.currentAge !== 'all') {
+      const ageSelect = document.getElementById('age-filter-select');
+      if (ageSelect) ageSelect.value = this.currentAge;
+    }
+    if (this.showFavoritesOnly) {
+      const favBtn = document.getElementById('filter-favorites-toggle-btn');
+      if (favBtn) {
+        favBtn.classList.add('active');
+        favBtn.innerHTML = `<i class="fas fa-heart"></i> Showing Favorites (<span class="fav-count-badge-inline">${this.wishlist.length}</span>)`;
+      }
+    }
 
-    window.parentQuiz = new ParentQuiz('quiz-app');
-    window.parentQuiz.init();
+    // Initialize Submodules safely if containers exist
+    if (document.getElementById('box-builder-app')) {
+      window.boxBuilder = new BoxBuilder('box-builder-app');
+      window.boxBuilder.init();
+    }
 
-    window.parentSurvey = new ParentSurvey('parent-survey-app');
-    window.parentSurvey.init();
+    if (document.getElementById('quiz-app')) {
+      window.parentQuiz = new ParentQuiz('quiz-app');
+      window.parentQuiz.init();
+    }
+
+    if (document.getElementById('parent-survey-app')) {
+      window.parentSurvey = new ParentSurvey('parent-survey-app');
+      window.parentSurvey.init();
+    }
 
     // Cart Drawer subscription
     cartManager.subscribe(state => {
@@ -45,6 +85,14 @@ class BubblesApp {
     window.addEventListener('bubbles:toast', (e) => {
       this.renderToast(e.detail.message, e.detail.type);
     });
+
+    // Auto-scroll to hash if specified
+    if (typeof window !== 'undefined' && window.location && window.location.hash) {
+      const hashEl = document.querySelector(window.location.hash);
+      if (hashEl) {
+        setTimeout(() => hashEl.scrollIntoView({ behavior: 'smooth' }), 150);
+      }
+    }
 
     console.log('🫧 Bubbles Play & Learn Co. initialized successfully.');
   }
@@ -70,6 +118,7 @@ class BubblesApp {
     localStorage.setItem('bubbles_wishlist', JSON.stringify(this.wishlist));
     this.updateWishlistCount();
     this.renderProductsCatalog();
+    this.renderFeaturedProducts();
     this.renderSavedFavorites();
     this.updateQuickViewFavBtn(productId);
   }
@@ -196,6 +245,8 @@ class BubblesApp {
       section.classList.remove('fav-section-pulse');
       void section.offsetWidth;
       section.classList.add('fav-section-pulse');
+    } else if (typeof window !== 'undefined' && window.location) {
+      window.location.href = '/shop.html#saved-favorites-section';
     }
   }
 
@@ -364,6 +415,12 @@ class BubblesApp {
   }
 
   filterByAgeGroup(ageId, shouldScroll = true) {
+    const catalogContainer = document.getElementById('products-grid');
+    if (!catalogContainer && typeof window !== 'undefined' && window.location) {
+      window.location.href = `/shop.html?age=${encodeURIComponent(ageId)}`;
+      return;
+    }
+
     this.currentAge = ageId;
     
     // Update select element if present
@@ -402,6 +459,62 @@ class BubblesApp {
     } else if (ageId === 'all') {
       this.renderToast(`Showing all ${PRODUCTS.length} educational toys`, 'info');
     }
+  }
+
+  renderFeaturedProducts() {
+    const container = document.getElementById('featured-products-grid');
+    if (!container) return;
+
+    // Handpicked top Montessori bestsellers across different developmental stages
+    const featuredIds = ['preschool-29', 'fiveplus-07', 'fiveplus-05', 'preschool-28'];
+    let featuredList = featuredIds.map(id => getProductById(id)).filter(Boolean);
+    if (featuredList.length < 4) {
+      featuredList = PRODUCTS.slice(0, 4);
+    }
+
+    container.innerHTML = featuredList.map(prod => {
+      const isWishlisted = this.wishlist.includes(prod.id);
+      return `
+        <div class="product-card" data-id="${prod.id}">
+          <button class="wishlist-heart-btn ${isWishlisted ? 'active' : ''}" onclick="window.app.toggleWishlist('${prod.id}')" title="Save to favorites">
+            <i class="${isWishlisted ? 'fas fa-heart text-danger' : 'far fa-heart'}"></i>
+          </button>
+
+          ${prod.tag ? `<span class="prod-badge-tag">${prod.tag}</span>` : '<span class="prod-badge-tag">Top Pick</span>'}
+
+          <div class="prod-img-box" onclick="window.app.openQuickView('${prod.id}')">
+            ${renderProductMedia(prod)}
+            <span class="quick-view-overlay"><i class="fas fa-search-plus"></i> Quick View</span>
+          </div>
+
+          <div class="prod-details">
+            <div class="prod-age-chip">${prod.ageLabel || 'Montessori Toy'}</div>
+            <h4 class="prod-title" onclick="window.app.openQuickView('${prod.id}')">${prod.title}</h4>
+            
+            <div class="prod-meta-row">
+              <span class="prod-origin"><i class="fas fa-map-marker-alt"></i> ${prod.madeIn || 'Sri Lanka Handcrafted'}</span>
+            </div>
+
+            <div class="prod-rating-row">
+              <span class="stars">★★★★★</span>
+              <span class="reviews">(${prod.reviewsCount || 28})</span>
+            </div>
+
+            <div class="prod-card-bottom">
+              <div class="prod-pricing">
+                <span class="current-price">LKR ${prod.price.toLocaleString(undefined, { minimumFractionDigits: prod.price % 1 === 0 ? 0 : 2, maximumFractionDigits: 2 })}</span>
+                ${prod.originalPrice > prod.price ? `
+                  <span class="original-price">LKR ${prod.originalPrice.toLocaleString(undefined, { minimumFractionDigits: prod.originalPrice % 1 === 0 ? 0 : 2, maximumFractionDigits: 2 })}</span>
+                ` : ''}
+              </div>
+              <button class="btn btn-sm btn-primary add-to-cart-btn" onclick="window.cartManager.addItem(window.app.getProductItem('${prod.id}'), 1)">
+                <i class="fas fa-cart-plus"></i> Add
+              </button>
+            </div>
+          </div>
+        </div>
+      `;
+    }).join('');
   }
 
   setAgeFilter(ageId) {

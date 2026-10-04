@@ -93,14 +93,30 @@ console.assert(html.includes('id="filter-favorites-toggle-btn"'), 'index.html mu
 console.assert(html.includes('id="wishlist-count-badge"'), 'index.html must contain #wishlist-count-badge');
 console.assert(html.includes('id="mobile-wishlist-count-badge"'), 'index.html must contain #mobile-wishlist-count-badge');
 
-// Test app.js controller for Favorites methods
+// Test app.js controller for Favorites and Shop methods
 const appJs = fs.readFileSync('./js/app.js', 'utf8');
 console.assert(appJs.includes('renderSavedFavorites()'), 'app.js must implement renderSavedFavorites()');
+console.assert(appJs.includes('renderFeaturedProducts()'), 'app.js must implement renderFeaturedProducts()');
 console.assert(appJs.includes('toggleWishlist('), 'app.js must implement toggleWishlist()');
 console.assert(appJs.includes('scrollToFavorites()'), 'app.js must implement scrollToFavorites()');
 console.assert(appJs.includes('clearAllFavorites()'), 'app.js must implement clearAllFavorites()');
 console.assert(appJs.includes('addAllFavoritesToCart()'), 'app.js must implement addAllFavoritesToCart()');
 console.assert(appJs.includes('toggleFavoritesCatalogFilter()'), 'app.js must implement toggleFavoritesCatalogFilter()');
+
+// Test Dedicated Shop page separation and features
+console.assert(fs.existsSync('./shop.html'), 'shop.html must exist as a dedicated shop page');
+const shopHtml = fs.readFileSync('./shop.html', 'utf8');
+console.assert(shopHtml.includes('id="toy-store-age-section"'), 'shop.html must have #toy-store-age-section');
+console.assert(shopHtml.includes('id="age-category-pills-shelf"'), 'shop.html must have #age-category-pills-shelf');
+console.assert(shopHtml.includes('id="products-grid"'), 'shop.html must have #products-grid');
+console.assert(shopHtml.includes('id="saved-favorites-section"'), 'shop.html must contain #saved-favorites-section');
+console.assert(shopHtml.includes('id="saved-favorites-container"'), 'shop.html must contain #saved-favorites-container');
+console.assert(shopHtml.includes('id="filter-favorites-toggle-btn"'), 'shop.html must contain #filter-favorites-toggle-btn');
+console.assert(shopHtml.includes('id="build-a-box"'), 'shop.html must contain #build-a-box');
+console.assert(html.includes('/shop.html'), 'index.html must link to dedicated shop.html');
+['0–1 Year', '1–2 Years', '2–3 Years', '3–4 Years', '5+ Years'].forEach(cat => {
+  console.assert(shopHtml.includes(cat), `shop.html must contain category label "${cat}"`);
+});
 
 // Test components.css for Favorites styling
 const css = fs.readFileSync('./css/components.css', 'utf8');

@@ -3,6 +3,7 @@ import http from 'http';
 
 const urls = [
   '/',
+  '/shop.html',
   '/css/main.css',
   '/css/components.css',
   '/css/responsive.css',

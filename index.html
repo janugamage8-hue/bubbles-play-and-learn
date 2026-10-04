@@ -65,10 +65,10 @@
 
       <nav>
         <ul class="nav-links">
-          <li><a href="#home">Home</a></li>
-          <li><a href="#shop-by-age">Shop by Age <span class="nav-badge-pill">5 Stages</span></a></li>
-          <li><a href="#build-a-box">Build Your Box</a></li>
-          <li><a href="#toy-catalog">Toy Store</a></li>
+          <li><a href="#home" class="active">Home</a></li>
+          <li><a href="/shop.html">Shop All Toys <span class="nav-badge-pill">80+ Items</span></a></li>
+          <li><a href="#shop-by-age">Shop by Age</a></li>
+          <li><a href="/shop.html#build-a-box">Build Your Box</a></li>
           <li><a href="#milestone-quiz">Development Quiz</a></li>
           <li><a href="#parent-survey">Parent Survey</a></li>
         </ul>
@@ -103,9 +103,10 @@
     </div>
     <ul class="mobile-nav-links">
       <li><a href="#home" onclick="document.getElementById('mobile-nav-drawer').classList.remove('active')"><i class="fas fa-home"></i> Home <i class="fas fa-chevron-right"></i></a></li>
+      <li><a href="/shop.html" onclick="document.getElementById('mobile-nav-drawer').classList.remove('active')"><i class="fas fa-store"></i> Shop All Toys (80+) <i class="fas fa-chevron-right"></i></a></li>
       <li><a href="#shop-by-age" onclick="document.getElementById('mobile-nav-drawer').classList.remove('active')">Shop by Age (0–5+ Yrs) <i class="fas fa-chevron-right"></i></a></li>
-      <li><a href="#build-a-box" onclick="document.getElementById('mobile-nav-drawer').classList.remove('active')">Build Your Box <i class="fas fa-chevron-right"></i></a></li>
-      <li><a href="#toy-catalog" onclick="document.getElementById('mobile-nav-drawer').classList.remove('active')">Montessori Toy Store <i class="fas fa-chevron-right"></i></a></li>
+      <li><a href="/shop.html#build-a-box" onclick="document.getElementById('mobile-nav-drawer').classList.remove('active')">Build Your Box <i class="fas fa-chevron-right"></i></a></li>
+      <li><a href="#toy-catalog" onclick="document.getElementById('mobile-nav-drawer').classList.remove('active')">Featured Bestsellers <i class="fas fa-chevron-right"></i></a></li>
       <li><a href="#toy-store-age-section" onclick="document.getElementById('mobile-nav-drawer').classList.remove('active')">Shop by Age Shelf <i class="fas fa-chevron-right"></i></a></li>
       <li><a href="#saved-favorites-section" onclick="document.getElementById('mobile-nav-drawer').classList.remove('active'); window.app.scrollToFavorites();"><i class="fas fa-heart text-danger"></i> Saved Favorites (<span id="mobile-wishlist-count-badge">0</span>) <i class="fas fa-chevron-right"></i></a></li>
       <li><a href="#milestone-quiz" onclick="document.getElementById('mobile-nav-drawer').classList.remove('active')">Development Quiz <i class="fas fa-chevron-right"></i></a></li>
@@ -135,11 +136,11 @@
             </p>
 
             <div class="hero-cta-group">
-              <a href="#build-a-box" class="btn btn-primary btn-lg">
-                <i class="fas fa-boxes"></i> Shop Our Toy Kits
+              <a href="/shop.html" class="btn btn-primary btn-lg">
+                <i class="fas fa-store"></i> Explore Our Toy Store
               </a>
-              <a href="#shop-by-age" class="btn btn-outline btn-lg">
-                <i class="fas fa-layer-group"></i> Shop by Age
+              <a href="/shop.html#build-a-box" class="btn btn-outline btn-lg">
+                <i class="fas fa-boxes"></i> Build a Play Box
               </a>
             </div>
 
@@ -185,8 +186,8 @@
                     <span style="font-size: 0.8rem; color: var(--color-text-muted);">Custom Play Box Sets</span><br>
                     <strong style="font-size: 1.15rem; color: var(--color-primary);">From LKR 5,000</strong>
                   </div>
-                  <a href="#build-a-box" class="btn btn-sm btn-primary">
-                    Shop Our Toy Kits <i class="fas fa-arrow-right"></i>
+                  <a href="/shop.html" class="btn btn-sm btn-primary">
+                    Browse Shop <i class="fas fa-arrow-right"></i>
                   </a>
                 </div>
               </div>
@@ -327,10 +328,10 @@
         </div>
 
         <div class="why-educational-cta">
-          <a href="#build-a-box" class="btn btn-primary btn-lg">
+          <a href="/shop.html#build-a-box" class="btn btn-primary btn-lg">
             <i class="fas fa-boxes"></i> Shop Our Toy Kits
           </a>
-          <a href="#toy-catalog" class="btn btn-outline btn-lg">
+          <a href="/shop.html" class="btn btn-outline btn-lg">
             <i class="fas fa-store"></i> Explore All Toys
           </a>
         </div>
@@ -354,35 +355,40 @@
       </div>
     </section>
 
-    <!-- 3. Interactive "Build Your Own Box" Section -->
-    <section class="section" id="build-a-box">
+    <!-- 3. Custom Box Builder Callout -->
+    <section class="section" id="build-a-box" style="background-color: var(--color-surface-subtle); padding: 48px 0;">
       <div class="container">
-        <div class="section-header">
-          <span class="section-pill-tag"><i class="fas fa-puzzle-piece"></i> Custom Box Builder</span>
-          <h2 class="section-title">Build Your Custom Bubbles Box</h2>
-          <p class="section-subtitle">
-            Pick 5 to 7 developmental toys across wooden puzzles, counting games, sensory soothers, and fine-motor activities. Enjoy bundle savings up to 42% off individual retail prices!
-          </p>
-        </div>
-
-        <div id="box-builder-app">
-          <!-- Rendered dynamically by box-builder.js -->
+        <div class="shop-explore-banner" style="margin-top: 0; background: #FFFFFF; border-style: solid; border-color: var(--color-border);">
+          <div class="shop-explore-banner-content">
+            <div class="shop-explore-icon" style="background: linear-gradient(135deg, #5F7A61 0%, #4A8E9F 100%);">
+              <i class="fas fa-box-open"></i>
+            </div>
+            <div class="shop-explore-text">
+              <h3>Build Your Custom Bubbles Box</h3>
+              <p>Pick 5 to 7 developmental toys across wooden puzzles, counting games, and sensory soothers. Enjoy bundle savings up to 42% off individual retail prices!</p>
+            </div>
+          </div>
+          <div class="shop-explore-btn-wrap">
+            <a href="/shop.html#build-a-box" class="btn btn-primary btn-lg">
+              <i class="fas fa-magic"></i> Open Custom Box Builder <i class="fas fa-arrow-right"></i>
+            </a>
+          </div>
         </div>
       </div>
     </section>
 
-    <!-- 6. Full Product Catalog & Store -->
+    <!-- 4. Featured Bestsellers & Store Preview -->
     <section class="section" id="toy-catalog" style="background-color: var(--color-surface);">
       <div class="container">
         <div class="section-header">
-          <span class="section-pill-tag"><i class="fas fa-store"></i> Individual Toys & Materials</span>
-          <h2 class="section-title">Handcrafted Sri Lankan Toys & Montessori Store</h2>
+          <span class="section-pill-tag"><i class="fas fa-star"></i> Handcrafted Bestsellers</span>
+          <h2 class="section-title">Loved by Little Learners & Parents</h2>
           <p class="section-subtitle">
-            Looking for a specific wooden puzzle, counting toy, or sensory tool? Browse our full collection of over 30 authentic Sri Lankan artisanal and educational products.
+            A preview of our top Sri Lankan wooden toys and Montessori materials. Handcrafted from sustainably harvested timber and finished with food-grade beeswax.
           </p>
         </div>
 
-        <!-- Dedicated Age Category Section (0–1 Year, 1–2 Years, 2–3 Years, 3–4 Years, 5+ Years) -->
+        <!-- Dedicated Age Category Shelf (0–1 Year, 1–2 Years, 2–3 Years, 3–4 Years, 5+ Years) -->
         <div class="toy-store-age-section" id="toy-store-age-section">
           <div class="age-category-bar-header">
             <div class="age-category-title-group">
@@ -399,45 +405,33 @@
           </div>
         </div>
 
-        <div class="catalog-controls">
-          <!-- Search & Filter Options Bar -->
-          <div class="catalog-search-filter-bar">
-            <div class="search-input-box">
-              <i class="fas fa-search"></i>
-              <input type="text" id="search-catalog-input" placeholder="Search toys (e.g. elephant, blocks, sensory, math)..." />
-            </div>
-
-            <div class="filter-selects-group">
-              <select id="age-filter-select">
-                <option value="all">All Ages</option>
-                <option value="0-1y">0–1 Year</option>
-                <option value="1-2y">1–2 Years</option>
-                <option value="2-3y">2–3 Years</option>
-                <option value="3-4y">3–4 Years</option>
-                <option value="5y-plus">5+ Years</option>
-              </select>
-
-              <select id="sort-catalog-select">
-                <option value="featured">Featured First</option>
-                <option value="price-low">Price: Low to High</option>
-                <option value="price-high">Price: High to Low</option>
-                <option value="rating">Highest Rated</option>
-              </select>
-
-              <button type="button" class="btn btn-outline filter-fav-btn" id="filter-favorites-toggle-btn" onclick="window.app.toggleFavoritesCatalogFilter()" title="Filter catalog to show only your saved favorites">
-                <i class="far fa-heart"></i> <span id="catalog-fav-btn-label">Favorites</span> (<span class="fav-count-badge-inline">0</span>)
-              </button>
-            </div>
-          </div>
-
-          <div style="margin-top: 14px; font-size: 0.88rem; color: var(--color-text-muted);" id="catalog-results-count">
-            Showing all educational toys
-          </div>
+        <div style="display: flex; justify-content: flex-end; margin-bottom: 8px;">
+          <button type="button" class="btn btn-outline filter-fav-btn" id="filter-favorites-toggle-btn" onclick="window.app.scrollToFavorites()" title="View your saved favorites">
+            <i class="far fa-heart"></i> <span id="catalog-fav-btn-label">Favorites</span> (<span class="fav-count-badge-inline">0</span>)
+          </button>
         </div>
 
-        <!-- Products Grid -->
-        <div class="products-grid" id="products-grid">
+        <!-- Lightweight Featured Products Grid (Fast load, only 4 cards) -->
+        <div class="featured-products-grid" id="featured-products-grid">
           <!-- Rendered dynamically by app.js -->
+        </div>
+
+        <!-- Banner Linking to Dedicated Shop Page -->
+        <div class="shop-explore-banner">
+          <div class="shop-explore-banner-content">
+            <div class="shop-explore-icon">
+              <i class="fas fa-cubes"></i>
+            </div>
+            <div class="shop-explore-text">
+              <h3>Explore All 80+ Handcrafted Montessori Toys</h3>
+              <p>Looking for a specific wooden puzzle, counting board, sensory rattle, or stage box? Browse our dedicated online store.</p>
+            </div>
+          </div>
+          <div class="shop-explore-btn-wrap">
+            <a href="/shop.html" class="btn btn-primary btn-lg">
+              <i class="fas fa-store"></i> Visit Full Toy Store (80+ Toys) <i class="fas fa-arrow-right"></i>
+            </a>
+          </div>
         </div>
       </div>
     </section>
@@ -602,20 +596,21 @@
       <div>
         <h4 style="font-size: 1.05rem; color: #FFFFFF; margin-bottom: 16px;">Shop by Age</h4>
         <ul style="list-style: none; display: flex; flex-direction: column; gap: 10px; font-size: 0.88rem; color: #94A3B8;">
-          <li><a href="#toy-catalog" onclick="window.app.filterByAgeGroup('0-1y')">🍼 0–1 Year</a></li>
-          <li><a href="#toy-catalog" onclick="window.app.filterByAgeGroup('1-2y')">🌱 1–2 Years</a></li>
-          <li><a href="#toy-catalog" onclick="window.app.filterByAgeGroup('2-3y')">🧩 2–3 Years</a></li>
-          <li><a href="#toy-catalog" onclick="window.app.filterByAgeGroup('3-4y')">🚀 3–4 Years</a></li>
-          <li><a href="#toy-catalog" onclick="window.app.filterByAgeGroup('5y-plus')">🎓 5+ Years</a></li>
+          <li><a href="/shop.html?age=0-1y" onclick="window.app.filterByAgeGroup('0-1y')">🍼 0–1 Year</a></li>
+          <li><a href="/shop.html?age=1-2y" onclick="window.app.filterByAgeGroup('1-2y')">🌱 1–2 Years</a></li>
+          <li><a href="/shop.html?age=2-3y" onclick="window.app.filterByAgeGroup('2-3y')">🧩 2–3 Years</a></li>
+          <li><a href="/shop.html?age=3-4y" onclick="window.app.filterByAgeGroup('3-4y')">🚀 3–4 Years</a></li>
+          <li><a href="/shop.html?age=5y-plus" onclick="window.app.filterByAgeGroup('5y-plus')">🎓 5+ Years</a></li>
         </ul>
       </div>
 
       <div>
         <h4 style="font-size: 1.05rem; color: #FFFFFF; margin-bottom: 16px;">Quick Links</h4>
         <ul style="list-style: none; display: flex; flex-direction: column; gap: 10px; font-size: 0.88rem; color: #94A3B8;">
-          <li><a href="#build-a-box">Build Your Custom Box</a></li>
+          <li><a href="/shop.html">Montessori Toy Store (80+ Items)</a></li>
+          <li><a href="/shop.html#build-a-box">Build Your Custom Box</a></li>
           <li><a href="#toy-store-age-section">Shop by Age Category</a></li>
-          <li><a href="#toy-catalog">Montessori Toy Store</a></li>
+          <li><a href="#toy-catalog">Featured Bestsellers</a></li>
           <li><a href="#saved-favorites-section" onclick="window.app.scrollToFavorites()">Saved Favorites</a></li>
           <li><a href="#milestone-quiz">Development Milestone Quiz</a></li>
           <li><a href="#parent-survey">Parent Survey</a></li>

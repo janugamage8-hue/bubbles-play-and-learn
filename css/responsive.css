@@ -360,6 +360,25 @@
     height: 48px;
     font-size: 1.5rem;
   }
+
+  .shop-explore-banner {
+    padding: 24px 20px;
+    flex-direction: column;
+    text-align: center;
+  }
+
+  .shop-explore-banner-content {
+    flex-direction: column;
+  }
+
+  .shop-explore-btn-wrap {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .shop-header-banner h1 {
+    font-size: 1.8rem;
+  }
 }
 
 /* Extra Small Screens (max-width: 420px) */
