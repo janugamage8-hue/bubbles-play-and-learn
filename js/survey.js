@@ -1,6 +1,6 @@
-// Bubbles Play & Learn Co. - Sri Lankan Parent Market Research Survey & Early Access Hub
+// Bubbles Play & Learn Co. - Parent Market Research Survey & Early Access Hub
 // Directly addresses Page 1 Research Recommendation:
-// "Survey 100-200 Sri Lankan parents to measure the exact percentage willing to purchase at LKR 4,000 / 5,000 / 6,000 / 7,500"
+// "Survey 100-200 parents to measure the exact percentage willing to purchase at LKR 4,000 / 5,000 / 6,000 / 7,500"
 
 import { cartManager } from './cart.js';
 
@@ -87,8 +87,8 @@ export class ParentSurvey {
       this.container.innerHTML = `
         <div class="survey-card success-card">
           <div class="survey-badge"><i class="fas fa-heart"></i> Response Recorded</div>
-          <h2>Thank You for Empowering Sri Lankan Early Learning!</h2>
-          <p>Your insights directly guide which Montessori and wooden toys we manufacture locally in Sri Lanka.</p>
+          <h2>Thank You for Empowering Early Learning!</h2>
+          <p>Your insights directly guide which Montessori toys we curate for growing minds.</p>
           
           <div class="vip-coupon-display">
             <button class="btn btn-primary" onclick="window.parentSurvey.exploreCatalog()">
@@ -97,7 +97,7 @@ export class ParentSurvey {
           </div>
 
           <div class="live-research-results mt-4">
-            <h4><i class="fas fa-chart-pie"></i> Sri Lankan Parents' Willingness to Pay (${total} Responses)</h4>
+            <h4><i class="fas fa-chart-pie"></i> Parents' Willingness to Pay (${total} Responses)</h4>
             <div class="chart-bars-list">
               <div class="chart-bar-item">
                 <div class="chart-bar-labels">
@@ -129,7 +129,7 @@ export class ParentSurvey {
               </div>
             </div>
             <p class="research-summary-note">
-              <i class="fas fa-check-circle text-success"></i> <strong>Key Finding:</strong> 67% of Sri Lankan parents find <strong>LKR 5,000–6,500</strong> to be the ideal price point for a curated 5-7 toy developmental box, confirming Bubbles' pricing model!
+              <i class="fas fa-check-circle text-success"></i> <strong>Key Finding:</strong> 67% of parents find <strong>LKR 5,000–6,500</strong> to be the ideal price point for a curated 5-7 toy developmental box, confirming Bubbles' pricing model!
             </p>
           </div>
         </div>
@@ -140,11 +140,11 @@ export class ParentSurvey {
     this.container.innerHTML = `
       <div class="survey-card">
         <div class="survey-header">
-          <div class="survey-badge"><i class="fas fa-poll"></i> Sri Lankan Parents Research Initiative</div>
+          <div class="survey-badge"><i class="fas fa-poll"></i> Parent Research Initiative</div>
           <h2>Help Shape Bubbles Play & Learn Co.</h2>
-          <p>We believe high-quality, non-toxic Montessori play should be affordable for every Sri Lankan family. Share your opinion in 30 seconds to help us build our local toy collections.</p>
+          <p>We believe high-quality, non-toxic Montessori play should be affordable for every family. Share your opinion in 30 seconds to help us build our toy collections.</p>
           <div class="survey-stat-pill">
-            <i class="fas fa-users"></i> ${total} Sri Lankan parents have contributed so far
+            <i class="fas fa-users"></i> ${total} parents have contributed so far
           </div>
         </div>
 
@@ -177,14 +177,14 @@ export class ParentSurvey {
                 <input type="radio" name="willingPrice" value="7500" />
                 <div class="radio-card-body">
                   <strong>LKR 7,500+</strong>
-                  <small>Deluxe STEAM & wooden kit</small>
+                  <small>Deluxe STEAM & learning kit</small>
                 </div>
               </label>
             </div>
           </div>
 
           <div class="survey-question-block">
-            <label class="survey-q-label">2. What are your biggest concerns when buying toys in Sri Lanka? (Select all that apply)</label>
+            <label class="survey-q-label">2. What are your biggest concerns when buying toys? (Select all that apply)</label>
             <div class="checkbox-grid">
               <label class="custom-checkbox">
                 <input type="checkbox" name="concerns" value="safety" checked />

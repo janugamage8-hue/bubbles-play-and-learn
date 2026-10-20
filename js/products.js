@@ -22,7 +22,7 @@ export const SHOP_BY_AGE_GROUPS = [
     focus: 'Reflexes & Auditory Bonding',
     description: 'Gentle stimuli, soothing rattles, safe mouthing textures, crawling practice & baby soft books.',
     milestones: ['Visual tracking', 'Palmar grasp reflex', 'Tummy time strength', 'Auditory bonding'],
-    sampleToys: 'Wooden Baby Rattle Set • Animals Quiet Book • Crawl Practice Buddy',
+    sampleToys: 'Montessori Baby Rattle Set • Animals Quiet Book • Crawl Practice Buddy',
     themeClass: 'age-theme-0-1',
     boxId: 'box-stage-0'
   },
@@ -33,9 +33,9 @@ export const SHOP_BY_AGE_GROUPS = [
     badge: 'Toddler Movement',
     icon: '🌱',
     focus: 'Cause-and-Effect & Stacking',
-    description: 'Walking bikes, balance cars, wooden activity cubes & rainbow push-pull blocks.',
+    description: 'Walking bikes, balance cars, multi-sided activity cubes & rainbow push-pull blocks.',
     milestones: ['Pincer grasp precision', 'Object permanence', 'Push & pull motion', 'Early sorting'],
-    sampleToys: 'Elephant Walking Bike • Wooden Activity Cube • Curated 12-18M Kit',
+    sampleToys: 'Elephant Walking Bike • Multi-Sided Activity Cube • Curated 12-18M Kit',
     themeClass: 'age-theme-1-2',
     boxId: 'box-stage-1'
   },

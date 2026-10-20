@@ -491,6 +491,23 @@ class BubblesApp {
     const container = document.getElementById('featured-products-grid');
     if (!container) return;
 
+    // Helper to sanitize any target phrases on the home page
+    const cleanText = (text) => {
+      if (!text) return '';
+      return text
+        .replace(/\bSri Lankan Hardwood\b/gi, 'Premium Natural Materials')
+        .replace(/\bHandmade in SL\b/gi, 'Child-Safe Materials')
+        .replace(/\bMade in Sri Lanka\b/gi, 'Thoughtfully Crafted')
+        .replace(/\bSri Lanka Handcrafted\b/gi, 'Thoughtfully Crafted')
+        .replace(/\bSri Lankan\b/gi, 'Local')
+        .replace(/\bSri Lanka\b/gi, 'Islandwide')
+        .replace(/\bHandcrafted\b/gi, 'Thoughtfully Crafted')
+        .replace(/\bWooden\b/gi, 'Developmental')
+        .replace(/\bWood\b/gi, 'Montessori')
+        .replace(/\s{2,}/g, ' ')
+        .trim();
+    };
+
     // Handpicked top Montessori bestsellers across different developmental stages
     const featuredIds = ['preschool-29', 'fiveplus-07', 'fiveplus-05', 'preschool-28'];
     let featuredList = featuredIds.map(id => getProductById(id)).filter(Boolean);
@@ -500,13 +517,16 @@ class BubblesApp {
 
     container.innerHTML = featuredList.map(prod => {
       const isWishlisted = this.wishlist.includes(prod.id);
+      const cleanTitle = cleanText(prod.title);
+      const cleanTag = prod.tag ? cleanText(prod.tag) : 'Top Pick';
+      const cleanOrigin = cleanText(prod.madeIn) || 'Child-Safe Quality';
       return `
         <div class="product-card" data-id="${prod.id}">
           <button class="wishlist-heart-btn ${isWishlisted ? 'active' : ''}" data-id="${prod.id}" onclick="window.app.toggleWishlist('${prod.id}', event)" title="${isWishlisted ? 'Remove from favorites' : 'Save to favorites'}">
             <i class="${isWishlisted ? 'fas fa-heart text-danger' : 'far fa-heart'}"></i>
           </button>
 
-          ${prod.tag ? `<span class="prod-badge-tag">${prod.tag}</span>` : '<span class="prod-badge-tag">Top Pick</span>'}
+          <span class="prod-badge-tag">${cleanTag}</span>
 
           <div class="prod-img-box" onclick="window.app.openQuickView('${prod.id}')">
             ${renderProductMedia(prod)}
@@ -515,10 +535,10 @@ class BubblesApp {
 
           <div class="prod-details">
             <div class="prod-age-chip">${prod.ageLabel || 'Montessori Toy'}</div>
-            <h4 class="prod-title" onclick="window.app.openQuickView('${prod.id}')">${prod.title}</h4>
+            <h4 class="prod-title" onclick="window.app.openQuickView('${prod.id}')">${cleanTitle}</h4>
             
             <div class="prod-meta-row">
-              <span class="prod-origin"><i class="fas fa-map-marker-alt"></i> ${prod.madeIn || 'Sri Lanka Handcrafted'}</span>
+              <span class="prod-origin"><i class="fas fa-map-marker-alt"></i> ${cleanOrigin}</span>
             </div>
 
             <div class="prod-rating-row">
@@ -580,7 +600,7 @@ class BubblesApp {
 
           <div class="box-rating-row">
             <span class="stars">★★★★★</span>
-            <span class="rating-num">${box.rating} (${box.reviewsCount} Sri Lankan parents)</span>
+            <span class="rating-num">${box.rating} (${box.reviewsCount} verified parents)</span>
           </div>
 
           <div class="box-highlights">

@@ -165,8 +165,8 @@ export class ParentQuiz {
             <button class="quiz-option-btn" onclick="window.parentQuiz.selectOption('material', 'wood')">
               <span class="quiz-opt-icon">🌳</span>
               <div class="quiz-opt-text">
-                <strong>Handcrafted Natural Wood</strong>
-                <small>Local Sri Lankan sustainable rubberwood & non-toxic oils</small>
+                <strong>Natural Safe Materials</strong>
+                <small>Sustainable organic materials & non-toxic oils</small>
               </div>
             </button>
             <button class="quiz-option-btn" onclick="window.parentQuiz.selectOption('material', 'montessori')">
@@ -187,7 +187,7 @@ export class ParentQuiz {
               <span class="quiz-opt-icon">🌈</span>
               <div class="quiz-opt-text">
                 <strong>Balanced Multi-Sensory Mix</strong>
-                <small>Combination of wood, soft textiles, clay, and art paints</small>
+                <small>Combination of sensory textures, soft textiles, clay, and art paints</small>
               </div>
             </button>
           </div>

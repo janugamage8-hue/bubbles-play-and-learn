@@ -6,7 +6,7 @@ import { submitOrderToSupabase, saveLocalOrderBackup } from './supabase-client.j
 const CART_STORAGE_KEY = 'bubbles_cart_v1';
 const PROMO_CODES = {
   'WELCOME10': { discount: 0.10, label: '10% Welcome Discount' },
-  'FREESHIP': { freeShipping: true, label: 'Free Islandwide Sri Lanka Delivery' }
+  'FREESHIP': { freeShipping: true, label: 'Free Islandwide Delivery' }
 };
 
 class CartManager {
@@ -214,7 +214,7 @@ export function renderCartDrawer() {
       <div class="cart-empty-state">
         <div class="empty-icon">🫧</div>
         <h3>Your Bubbles Cart is Empty</h3>
-        <p>Build your custom developmental box or explore our authentic Sri Lankan wooden toys to fill your child's world with screen-free joy!</p>
+        <p>Build your custom developmental box or explore our curated developmental toys to fill your child's world with screen-free joy!</p>
         <button class="btn btn-primary" onclick="document.getElementById('cart-drawer').classList.remove('active'); location.href='#build-a-box'">
           Build Your Custom Box
         </button>
@@ -303,7 +303,7 @@ export function renderCartDrawer() {
       <div class="free-shipping-tracker">
         ${state.isFreeDelivery ? `
           <div class="free-shipping-msg success">
-            <i class="fas fa-check-circle"></i> <strong>Congratulations!</strong> You get FREE Islandwide Sri Lanka Delivery!
+            <i class="fas fa-check-circle"></i> <strong>Congratulations!</strong> You get FREE Islandwide Delivery!
           </div>
         ` : `
           <div class="free-shipping-msg">
@@ -443,7 +443,7 @@ window.openCheckoutModal = function() {
       <div class="checkout-modal-header">
         <div>
           <h2>Order Checkout & Delivery</h2>
-          <p>Sri Lanka Islandwide Safe Shipping</p>
+          <p>Islandwide Safe Shipping</p>
         </div>
         <button class="btn-close-modal" onclick="window.closeCheckoutModal()">&times;</button>
       </div>
@@ -484,7 +484,7 @@ window.openCheckoutModal = function() {
               <div class="form-group">
                 <label>District *</label>
                 <select name="district" required>
-                  <option value="">Select Sri Lankan District</option>
+                  <option value="">Select District</option>
                   <option value="Colombo" selected>Colombo</option>
                   <option value="Gampaha">Gampaha</option>
                   <option value="Kalutara">Kalutara</option>
@@ -529,7 +529,7 @@ window.openCheckoutModal = function() {
                 <div class="payment-card-content">
                   <div class="payment-icon"><i class="fas fa-hand-holding-usd"></i></div>
                   <div class="payment-title">Cash on Delivery (COD)</div>
-                  <div class="payment-desc">Pay cash when courier delivers to your doorstep anywhere in Sri Lanka.</div>
+                  <div class="payment-desc">Pay cash when courier delivers to your doorstep islandwide.</div>
                 </div>
               </label>
 
@@ -834,7 +834,7 @@ window.renderOrderSuccessModal = function(order, supabaseResult = null) {
 
         <div class="order-receipt-card">
           <div class="receipt-header">
-            <h4>Bubbles Play & Learn Co. Sri Lanka</h4>
+            <h4>Bubbles Play & Learn Co.</h4>
             <span class="receipt-date">${order.orderDate}</span>
           </div>
 
