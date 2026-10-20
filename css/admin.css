@@ -773,3 +773,153 @@ h1, h2, h3, h4, h5, .brand-font {
     width: 100%;
   }
 }
+
+/* ------------------------------------------------------------------------------
+   Printable Waybill / Packing Slip Styles
+   ------------------------------------------------------------------------------ */
+.waybill-sheet {
+  background: #ffffff;
+  color: #111827;
+  font-family: 'Plus Jakarta Sans', system-ui, sans-serif;
+  line-height: 1.4;
+  padding: 10px;
+}
+
+.waybill-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  padding-bottom: 14px;
+  border-bottom: 2px solid #1e293b;
+  margin-bottom: 14px;
+}
+
+.waybill-brand h2 {
+  font-size: 1.25rem;
+  color: #5F7A61;
+  margin-bottom: 2px;
+}
+
+.waybill-meta {
+  text-align: right;
+}
+
+.waybill-ref-badge {
+  font-family: monospace;
+  font-size: 1.15rem;
+  font-weight: 800;
+  background: #f1f5f9;
+  padding: 4px 10px;
+  border-radius: 6px;
+  border: 1px solid #cbd5e1;
+  display: inline-block;
+  margin-bottom: 4px;
+}
+
+.waybill-grid-2 {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  margin-bottom: 16px;
+}
+
+.waybill-card {
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  padding: 12px;
+  background: #f8fafc;
+}
+
+.waybill-card-title {
+  font-size: 0.75rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: #64748b;
+  margin-bottom: 6px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.waybill-collect-box {
+  border: 2px dashed #e06d53;
+  background: #fdf0ed;
+  border-radius: 8px;
+  padding: 10px 14px;
+  margin-bottom: 16px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.waybill-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-bottom: 16px;
+  font-size: 0.85rem;
+}
+
+.waybill-table th, .waybill-table td {
+  border: 1px solid #cbd5e1;
+  padding: 8px 10px;
+  text-align: left;
+}
+
+.waybill-table th {
+  background: #f1f5f9;
+  font-weight: 700;
+}
+
+.waybill-table th.num, .waybill-table td.num {
+  text-align: right;
+}
+
+.waybill-footer-signatures {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 24px;
+  margin-top: 24px;
+  padding-top: 16px;
+  border-top: 1px dashed #cbd5e1;
+}
+
+.signature-line {
+  border-top: 1px solid #64748b;
+  margin-top: 40px;
+  padding-top: 4px;
+  font-size: 0.75rem;
+  color: #64748b;
+  text-align: center;
+}
+
+@media print {
+  body.admin-body {
+    background: #ffffff !important;
+  }
+  .admin-navbar,
+  .admin-kpi-grid,
+  .admin-toolbar-card,
+  .orders-table-wrapper,
+  .admin-auth-wrapper,
+  .no-print,
+  #modal-order-items,
+  #modal-config {
+    display: none !important;
+  }
+  .admin-modal-backdrop.active#modal-packing-slip {
+    position: static !important;
+    background: transparent !important;
+    padding: 0 !important;
+    display: block !important;
+  }
+  .admin-modal-backdrop.active#modal-packing-slip .admin-modal-box {
+    box-shadow: none !important;
+    border: none !important;
+    max-width: 100% !important;
+    width: 100% !important;
+    padding: 0 !important;
+    overflow: visible !important;
+  }
+}
+

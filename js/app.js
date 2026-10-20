@@ -106,20 +106,46 @@ class BubblesApp {
     }
   }
 
-  toggleWishlist(productId) {
+  toggleWishlist(productId, event) {
+    if (event && event.stopPropagation) {
+      event.stopPropagation();
+    }
     const idx = this.wishlist.indexOf(productId);
+    let isNowSaved = false;
     if (idx > -1) {
       this.wishlist.splice(idx, 1);
       this.renderToast('Removed from favorites.', 'info');
     } else {
       this.wishlist.push(productId);
+      isNowSaved = true;
       this.renderToast('Saved to your favorites! ❤️', 'success');
     }
     localStorage.setItem('bubbles_wishlist', JSON.stringify(this.wishlist));
     this.updateWishlistCount();
-    this.renderProductsCatalog();
-    this.renderFeaturedProducts();
-    this.renderSavedFavorites();
+
+    // Dynamically toggle all heart buttons for this productId across the current page
+    const targetButtons = document.querySelectorAll(`.wishlist-heart-btn[data-id="${productId}"], button[onclick*="'${productId}'"].wishlist-heart-btn`);
+    targetButtons.forEach(btn => {
+      if (isNowSaved) {
+        btn.classList.add('active');
+        btn.setAttribute('title', 'Remove from favorites');
+        const icon = btn.querySelector('i');
+        if (icon) icon.className = 'fas fa-heart text-danger';
+      } else {
+        btn.classList.remove('active');
+        btn.setAttribute('title', 'Save to favorites');
+        const icon = btn.querySelector('i');
+        if (icon) icon.className = 'far fa-heart';
+      }
+    });
+
+    // Re-render favorites view if container exists on current page (e.g. favorites.html)
+    if (document.getElementById('saved-favorites-container')) {
+      this.renderSavedFavorites();
+    }
+    if (this.showFavoritesOnly) {
+      this.renderProductsCatalog();
+    }
     this.updateQuickViewFavBtn(productId);
   }
 
@@ -134,7 +160,8 @@ class BubblesApp {
     if (headerBtn) {
       const icon = headerBtn.querySelector('i');
       if (icon) {
-        if (count > 0) {
+        const isFavPage = typeof window !== 'undefined' && window.location && window.location.pathname.includes('favorites');
+        if (count > 0 || isFavPage) {
           icon.className = 'fas fa-heart text-danger';
         } else {
           icon.className = 'far fa-heart';
@@ -165,9 +192,9 @@ class BubblesApp {
           <p class="empty-fav-desc">
             Tap the heart icon on any toy or stage box in our collection to save it here. You can easily compare developmental toys, build your child's wishlist, or add all items directly to your cart!
           </p>
-          <button class="btn btn-primary" onclick="document.getElementById('toy-catalog').scrollIntoView({ behavior: 'smooth' })">
+          <a href="/shop.html" class="btn btn-primary" style="display: inline-flex; align-items: center; gap: 8px;">
             <i class="fas fa-cubes"></i> Browse Montessori Toys
-          </button>
+          </a>
         </div>
       `;
       return;
@@ -196,11 +223,11 @@ class BubblesApp {
       <div class="products-grid">
         ${favItems.map(item => `
           <div class="product-card" data-id="${item.id}">
-            <button class="wishlist-heart-btn active" onclick="window.app.toggleWishlist('${item.id}')" title="Remove from favorites">
+            <button class="wishlist-heart-btn active" data-id="${item.id}" onclick="window.app.toggleWishlist('${item.id}', event)" title="Remove from favorites">
               <i class="fas fa-heart text-danger"></i>
             </button>
 
-            ${item.tag ? `<span class="prod-badge-tag">${item.tag}</span>` : ''}
+            ${item.tag ? `<span class="prod-badge-tag">${item.tag}</span>` : (item.badge ? `<span class="prod-badge-tag">${item.badge}</span>` : '')}
 
             <div class="prod-img-box" onclick="window.app.openQuickView('${item.id}')">
               ${renderProductMedia(item)}
@@ -239,14 +266,13 @@ class BubblesApp {
   }
 
   scrollToFavorites() {
-    const section = document.getElementById('saved-favorites-section');
-    if (section) {
-      section.scrollIntoView({ behavior: 'smooth' });
-      section.classList.remove('fav-section-pulse');
-      void section.offsetWidth;
-      section.classList.add('fav-section-pulse');
-    } else if (typeof window !== 'undefined' && window.location) {
-      window.location.href = '/shop.html#saved-favorites-section';
+    if (typeof window !== 'undefined' && window.location) {
+      if (window.location.pathname.includes('favorites.html') || window.location.pathname.includes('favorites')) {
+        const section = document.getElementById('saved-favorites-section');
+        if (section) section.scrollIntoView({ behavior: 'smooth' });
+      } else {
+        window.location.href = '/favorites.html';
+      }
     }
   }
 
@@ -476,7 +502,7 @@ class BubblesApp {
       const isWishlisted = this.wishlist.includes(prod.id);
       return `
         <div class="product-card" data-id="${prod.id}">
-          <button class="wishlist-heart-btn ${isWishlisted ? 'active' : ''}" onclick="window.app.toggleWishlist('${prod.id}')" title="Save to favorites">
+          <button class="wishlist-heart-btn ${isWishlisted ? 'active' : ''}" data-id="${prod.id}" onclick="window.app.toggleWishlist('${prod.id}', event)" title="${isWishlisted ? 'Remove from favorites' : 'Save to favorites'}">
             <i class="${isWishlisted ? 'fas fa-heart text-danger' : 'far fa-heart'}"></i>
           </button>
 
@@ -535,8 +561,13 @@ class BubblesApp {
     const container = document.getElementById('curated-boxes-grid');
     if (!container) return;
 
-    container.innerHTML = CURATED_BOXES.map(box => `
+    container.innerHTML = CURATED_BOXES.map(box => {
+      const isWishlisted = this.wishlist.includes(box.id);
+      return `
       <div class="box-card" data-id="${box.id}">
+        <button class="wishlist-heart-btn ${isWishlisted ? 'active' : ''}" data-id="${box.id}" onclick="window.app.toggleWishlist('${box.id}', event)" title="${isWishlisted ? 'Remove from favorites' : 'Save to favorites'}">
+          <i class="${isWishlisted ? 'fas fa-heart text-danger' : 'far fa-heart'}"></i>
+        </button>
         <div class="box-card-badge">${box.badge}</div>
         <div class="box-visual-wrap" onclick="window.app.openQuickView('${box.id}')">
           ${renderProductMedia(box)}
@@ -566,9 +597,9 @@ class BubblesApp {
               <i class="fas fa-shopping-basket"></i> Add Box
             </button>
           </div>
-        </div>
       </div>
-    `).join('');
+      `;
+    }).join('');
   }
 
   getBoxItem(id) {
@@ -648,7 +679,7 @@ class BubblesApp {
       const isWishlisted = this.wishlist.includes(prod.id);
       return `
         <div class="product-card" data-id="${prod.id}">
-          <button class="wishlist-heart-btn ${isWishlisted ? 'active' : ''}" onclick="window.app.toggleWishlist('${prod.id}')" title="Save to favorites">
+          <button class="wishlist-heart-btn ${isWishlisted ? 'active' : ''}" data-id="${prod.id}" onclick="window.app.toggleWishlist('${prod.id}', event)" title="${isWishlisted ? 'Remove from favorites' : 'Save to favorites'}">
             <i class="${isWishlisted ? 'fas fa-heart text-danger' : 'far fa-heart'}"></i>
           </button>
 

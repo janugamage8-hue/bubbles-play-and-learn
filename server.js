@@ -45,6 +45,10 @@ const server = http.createServer((req, res) => {
   let reqUrl = req.url.split('?')[0];
   if (reqUrl === '/') {
     reqUrl = '/index.html';
+  } else if (reqUrl === '/favorites' || reqUrl === '/favorites/') {
+    reqUrl = '/favorites.html';
+  } else if (reqUrl === '/shop' || reqUrl === '/shop/') {
+    reqUrl = '/shop.html';
   }
 
   // Safe file path resolution

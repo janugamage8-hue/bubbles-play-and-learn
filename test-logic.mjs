@@ -85,11 +85,14 @@ console.assert(html.includes('href="#toy-catalog"'), 'index.html must have nav l
   console.assert(html.includes(cat), `index.html must contain category label "${cat}"`);
 });
 
-// Test HTML markup for Saved Favorites section & header controls
-console.assert(html.includes('id="saved-favorites-section"'), 'index.html must contain #saved-favorites-section');
-console.assert(html.includes('id="saved-favorites-container"'), 'index.html must contain #saved-favorites-container');
-console.assert(html.includes('id="header-favorites-btn"'), 'index.html must contain #header-favorites-btn');
-console.assert(html.includes('id="filter-favorites-toggle-btn"'), 'index.html must contain #filter-favorites-toggle-btn');
+// Test HTML markup: Favorites removed from home page, separate favorites.html page & header controls
+console.assert(!html.includes('id="saved-favorites-section"'), 'Favorites section must be removed from the home page (index.html)');
+console.assert(fs.existsSync('./favorites.html'), 'favorites.html must exist as a dedicated separate favorites page');
+const favoritesHtml = fs.readFileSync('./favorites.html', 'utf8');
+console.assert(favoritesHtml.includes('id="saved-favorites-section"'), 'favorites.html must contain #saved-favorites-section');
+console.assert(favoritesHtml.includes('id="saved-favorites-container"'), 'favorites.html must contain #saved-favorites-container');
+console.assert(html.includes('id="header-favorites-btn"') && html.includes('href="/favorites.html"'), 'index.html must have #header-favorites-btn linking to /favorites.html');
+console.assert(favoritesHtml.includes('id="header-favorites-btn"'), 'favorites.html must contain #header-favorites-btn');
 console.assert(html.includes('id="wishlist-count-badge"'), 'index.html must contain #wishlist-count-badge');
 console.assert(html.includes('id="mobile-wishlist-count-badge"'), 'index.html must contain #mobile-wishlist-count-badge');
 
@@ -102,6 +105,10 @@ console.assert(appJs.includes('scrollToFavorites()'), 'app.js must implement scr
 console.assert(appJs.includes('clearAllFavorites()'), 'app.js must implement clearAllFavorites()');
 console.assert(appJs.includes('addAllFavoritesToCart()'), 'app.js must implement addAllFavoritesToCart()');
 console.assert(appJs.includes('toggleFavoritesCatalogFilter()'), 'app.js must implement toggleFavoritesCatalogFilter()');
+console.assert(appJs.includes('far fa-heart') && appJs.includes('fas fa-heart text-danger'), 'app.js must toggle between outline (far fa-heart) and filled (fas fa-heart text-danger) heart icons');
+console.assert(appJs.includes('bubbles_wishlist'), 'app.js must persist favorites to localStorage under bubbles_wishlist');
+console.assert(favoritesHtml.includes('href="/index.html"'), 'favorites.html must link to home');
+console.assert(favoritesHtml.includes('href="/shop.html"'), 'favorites.html must link to shop');
 
 // Test Dedicated Shop page separation and features
 console.assert(fs.existsSync('./shop.html'), 'shop.html must exist as a dedicated shop page');
@@ -290,6 +297,19 @@ console.assert(adminHtml.includes('bubbles:orderPlaced'), 'admin.html must liste
 
 // Functional test: verify that orders stored in BUBBLES_ORDERS_HISTORY appear in fetchAllOrders
 const existingHistory = JSON.parse(globalThis.localStorage.getItem('BUBBLES_ORDERS_HISTORY') || '[]');
+if (!existingHistory.some(o => o.order_number === 'BUB-450199')) {
+  existingHistory.push({
+    order_number: 'BUB-450199',
+    customer_name: 'Existing Customer',
+    customer_phone: '077 555 4321',
+    customer_address: 'No 10, Duplication Road',
+    district: 'Colombo',
+    total_amount: 5400,
+    payment_method: 'cod',
+    status: 'Pending',
+    items: [{ id: 'toy-sample', title: 'Sample Toy', price: 5400, quantity: 1 }]
+  });
+}
 const pureLocalOrder = {
   order_number: 'BUB-LOCAL-TEST-99',
   customer_name: 'Local Test Customer',
