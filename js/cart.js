@@ -214,9 +214,9 @@ export function renderCartDrawer() {
       <div class="cart-empty-state">
         <div class="empty-icon">🫧</div>
         <h3>Your Bubbles Cart is Empty</h3>
-        <p>Build your custom developmental box or explore our curated developmental toys to fill your child's world with screen-free joy!</p>
-        <button class="btn btn-primary" onclick="document.getElementById('cart-drawer').classList.remove('active'); location.href='#build-a-box'">
-          Build Your Custom Box
+        <p>Explore our curated developmental toys to fill your child's world with screen-free joy!</p>
+        <button class="btn btn-primary" onclick="document.getElementById('cart-drawer').classList.remove('active'); location.href='/shop.html'">
+          Explore Our Toy Store
         </button>
       </div>
     `;
@@ -876,7 +876,7 @@ window.renderOrderSuccessModal = function(order, supabaseResult = null) {
           <button class="btn btn-secondary btn-block" onclick="window.print()">
             <i class="fas fa-print"></i> Print Receipt / Save PDF
           </button>
-          <button class="btn btn-outline btn-block" onclick="window.closeCheckoutModal(); location.href='#build-a-box'">
+          <button class="btn btn-outline btn-block" onclick="window.closeCheckoutModal(); location.href='/shop.html'">
             Continue Exploring Bubbles
           </button>
         </div>
